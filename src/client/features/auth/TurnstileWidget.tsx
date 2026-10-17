@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getClientConfig } from "@/lib/client-config";
 
 const TURNSTILE_SCRIPT_SRC =
   "https://challenges.cloudflare.com/turnstile/v0/api.js";
@@ -6,7 +7,7 @@ const TURNSTILE_SCRIPT_SRC =
 // Public Turnstile site key, inlined at build time (see vite.config envPrefix).
 // The widget only renders when it's set, so unconfigured / self-hosted builds
 // are unaffected. The matching TURNSTILE_SECRET_KEY lives server-side only.
-export const TURNSTILE_SITE_KEY = import.meta.env.TURNSTILE_SITE_KEY?.trim();
+export const TURNSTILE_SITE_KEY = getClientConfig().TURNSTILE_SITE_KEY;
 
 type TurnstileApi = {
   render: (

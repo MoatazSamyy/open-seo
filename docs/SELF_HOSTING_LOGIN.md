@@ -32,8 +32,7 @@ share it with your team.
    Generate the secret with `openssl rand -base64 48`. Use `@yourdomain.com`
    in `ALLOWED_SIGNUP_EMAILS` to allow a whole domain.
 
-3. Restart: `docker compose up -d`. The app rebuilds once because the auth
-   mode changed.
+3. Restart: `docker compose up -d`.
 4. Open `BETTER_AUTH_URL`, choose **Create account**, and sign up with your
    allowlisted email. Then ask your teammates to do the same.
 

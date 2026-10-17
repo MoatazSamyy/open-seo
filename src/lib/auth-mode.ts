@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getClientConfig } from "@/lib/client-config";
 
 export const AUTH_MODES = [
   "cloudflare_access",
@@ -57,16 +58,16 @@ export function isHostedClientAuthMode() {
   // We accept that tradeoff to avoid a startup round-trip just to ask the
   // backend which auth UI to render. Hosted deployments must therefore set
   // AUTH_MODE=hosted in both the client build environment and the runtime.
-  return isHostedAuthMode(import.meta.env.AUTH_MODE);
+  return isHostedAuthMode(getClientConfig().AUTH_MODE);
 }
 
 // Same build-time AUTH_MODE contract as isHostedClientAuthMode.
 export function isSessionClientAuthMode() {
-  return isSessionAuthMode(import.meta.env.AUTH_MODE);
+  return isSessionAuthMode(getClientConfig().AUTH_MODE);
 }
 
 export function isPasswordClientAuthMode() {
-  return isPasswordAuthMode(import.meta.env.AUTH_MODE);
+  return isPasswordAuthMode(getClientConfig().AUTH_MODE);
 }
 
 export function isEmailVerificationBypassed() {
@@ -74,5 +75,5 @@ export function isEmailVerificationBypassed() {
   // verification and never marks users emailVerified, so the client must treat
   // the session as verified too — otherwise route guards and /verify-email
   // bounce each other in an infinite redirect loop.
-  return import.meta.env.BYPASS_EMAIL_VERIFICATION === "true";
+  return getClientConfig().BYPASS_EMAIL_VERIFICATION === "true";
 }

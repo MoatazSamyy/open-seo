@@ -49,14 +49,9 @@ export default defineConfig(({ mode, command }) => {
     // Static files (favicons, manifest) live beside the app code instead of at
     // the repo root.
     publicDir: "src/public",
-    envPrefix: [
-      "VITE_",
-      "AUTH_MODE",
-      "BYPASS_EMAIL_VERIFICATION",
-      "POSTHOG_PUBLIC_KEY",
-      "POSTHOG_HOST",
-      "TURNSTILE_SITE_KEY",
-    ],
+    // Settings like AUTH_MODE reach the client at runtime through
+    // src/lib/client-config.ts, so one build serves any configuration.
+    envPrefix: ["VITE_"],
     server: {
       allowedHosts,
       port,

@@ -25,6 +25,7 @@ import {
 } from "@/client/features/ai-mcp/agentSetupPrompt";
 import { CopyButton } from "@/client/components/CopyButton";
 import { AgentList } from "@/client/features/ai-mcp/AgentList";
+import { getClientConfig } from "@/lib/client-config";
 
 const DOCS_URL = "https://openseo.so/docs/agent-setup";
 const COACH_DOCS_URL = "https://openseo.so/docs/skills/seo-coach";
@@ -185,7 +186,8 @@ function AiPage() {
               </Card>
             </div>
 
-            {getAuthMode(import.meta.env.AUTH_MODE) === "cloudflare_access" ? (
+            {getAuthMode(getClientConfig().AUTH_MODE) ===
+            "cloudflare_access" ? (
               <Alert variant="warning" className="mt-8">
                 <ShieldAlert />
                 <AlertDescription>

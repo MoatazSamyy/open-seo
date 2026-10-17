@@ -99,17 +99,10 @@ declare namespace Cloudflare {
   }
 }
 
+// AUTH_MODE, BYPASS_EMAIL_VERIFICATION, POSTHOG_* and TURNSTILE_SITE_KEY are
+// not build-time env: the client reads them via src/lib/client-config.ts.
 interface ImportMetaEnv {
-  readonly AUTH_MODE?:
-    | "cloudflare_access"
-    | "local_noauth"
-    | "hosted"
-    | "password";
   readonly DATABASE_PROVIDER?: "d1" | "postgres";
-  readonly BYPASS_EMAIL_VERIFICATION?: string;
-  readonly POSTHOG_PUBLIC_KEY?: string;
-  readonly POSTHOG_HOST?: string;
-  readonly TURNSTILE_SITE_KEY?: string;
   readonly VITE_E2E_DOMAIN_FIXTURES?: string;
   readonly VITE_E2E_KEYWORD_FIXTURES?: string;
 }

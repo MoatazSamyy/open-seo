@@ -4,6 +4,7 @@ import {
   sanitizePostHogProperties,
   sanitizePostHogUrl,
 } from "@/client/lib/posthog-sanitize";
+import { getClientConfig } from "@/lib/client-config";
 
 // Type-only import: extracts the type at compile time without bundling posthog-js
 // oxlint-disable-next-line typescript/consistent-type-imports -- import() type avoids eagerly bundling posthog-js
@@ -71,8 +72,8 @@ function getBrowserPostHogClient(): Promise<BrowserPostHogClient | null> {
   browserPostHogClientPromise = import("posthog-js")
     .then((module) => {
       const client = module.default;
-      const apiKey = import.meta.env.POSTHOG_PUBLIC_KEY?.trim();
-      const host = import.meta.env.POSTHOG_HOST?.trim();
+      const { POSTHOG_PUBLIC_KEY: apiKey, POSTHOG_HOST: host } =
+        getClientConfig();
 
       if (!apiKey || !host) {
         return null;

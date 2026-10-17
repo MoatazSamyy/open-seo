@@ -51,9 +51,48 @@ hosted billing, captcha, or email. Follow-up: serve MCP in password mode.
 
 ## Milestone 3 — Run without Cloudflare emulation
 
-Replace Workflows and Durable Objects with a Postgres-backed job queue and a
-plain WebSocket server behind the same interfaces, so the Node image runs on
-any host. Ship a prebuilt image instead of building on first start.
+Today the Docker image installs dependencies, then **builds the app on first
+start** (client settings like `AUTH_MODE` are baked in at build time), then
+runs `vite preview`, which runs the Worker inside Miniflare (workerd). A
+5-minute loop calls the `scheduled` handler over HTTP. The goal is a Node
+server that runs on any host with only Postgres next to it.
+
+### What depends on the Cloudflare runtime
+
+| Dependency                                    | Where it's used                                                                          | Size            |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------- | --------------- |
+| `env` / `waitUntil` from `cloudflare:workers` | Config reads and background work, about 50 files                                         | Mechanical      |
+| KV (`KV`, `OAUTH_KV`)                         | Caches, audit progress, SERP locations, OAuth, referrals (~28 uses)                      | Small interface |
+| R2                                            | Response cache, AI-visibility exports and retention, GDPR erasure (5 files)              | Small interface |
+| D1                                            | Default local database (Postgres already supported)                                      | Drop on Node    |
+| Workflows (3)                                 | Site audit, rank checks, AI visibility: `step.do`, `step.sleep`, create/status/terminate | Durable runner  |
+| Durable Object + Agents SDK                   | SAM chat (`@cloudflare/think`, `useAgent` WebSockets)                                    | Hardest         |
+| Service binding + Browser Rendering           | The separate site-audit worker                                                           | Merge on Node   |
+| Cron triggers                                 | Scheduled rank checks, audit reconciler, OAuth purge                                     | Timer           |
+| Build-time client env                         | `AUTH_MODE`, PostHog, Turnstile, email bypass baked into the client                      | Runtime config  |
+
+### Phases
+
+- **3a — Prebuilt image.** Done. The server writes the client settings into
+  each page (`src/lib/client-config.ts`) instead of baking them into the
+  build, so the Dockerfile builds once and the container starts without
+  rebuilding. Still runs workerd. Independent of everything below.
+- **3b — Platform layer.** Put `env`, `waitUntil`, KV, and blob storage
+  behind `src/platform/` with a Cloudflare implementation only. No behavior
+  change; makes the rest possible.
+- **3c — Node runtime.** A Node HTTP entry, a Postgres KV table, filesystem
+  blob storage, timers for cron, and Postgres only.
+- **3d — Durable workflows on Postgres.** A runner that persists `step.do`
+  results and `step.sleep` wake-up times in Postgres, with the same API the
+  three workflows use, plus create/status/terminate.
+- **3e — Site audit in-process.** Run the audit engine in the main process
+  on Node; JavaScript rendering through Context.dev only.
+- **3f — SAM chat without Durable Objects.** Replace the Agents SDK's
+  Durable Object with Postgres-stored chat history and a WebSocket or SSE
+  endpoint. Until then, SAM is off on the Node runtime.
+
+3a ships on its own. 3b–3e together make the Node image usable without SAM;
+3f brings SAM back.
 
 ## Milestone 4 — Product gaps
 

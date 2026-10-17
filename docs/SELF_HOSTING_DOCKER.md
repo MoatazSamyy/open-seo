@@ -25,7 +25,7 @@ Set `DATAFORSEO_API_KEY` in `.env` using the [DataForSEO setup guide](./DATAFORS
 docker compose up -d
 ```
 
-Open `http://localhost:<PORT>` (default `3001`). The first start builds the app and may take 1-2 minutes; follow progress with `docker compose logs -f`.
+Open `http://localhost:<PORT>` (default `3001`). The image ships with the app already built, so it starts in well under a minute; follow progress with `docker compose logs -f`. Changing `.env` (including `AUTH_MODE`) only needs a restart, not a rebuild.
 
 Optional env values:
 
@@ -92,7 +92,7 @@ docker compose down
 
 ## Health and troubleshooting
 
-Startup checks appear in `docker compose logs` before the build. Once running, `/api/health` reports configuration and database status, and `docker compose ps` reports container health. Scheduler failures appear as `[scheduler]` messages in container logs. The pinned Cloudflare Vite runtime exposes `/cdn-cgi/handler/scheduled`; the container calls it only at `127.0.0.1` using the configured `PORT`. It passes the five-minute cron expression without overriding the clock. Newer Cloudflare versions may use a different local route; the [Cron Triggers documentation](https://developers.cloudflare.com/workers/configuration/cron-triggers/#test-cron-triggers-locally) describes the local handler mechanism.
+Startup checks appear in `docker compose logs` before migrations. Once running, `/api/health` reports configuration and database status, and `docker compose ps` reports container health. Scheduler failures appear as `[scheduler]` messages in container logs. The pinned Cloudflare Vite runtime exposes `/cdn-cgi/handler/scheduled`; the container calls it only at `127.0.0.1` using the configured `PORT`. It passes the five-minute cron expression without overriding the clock. Newer Cloudflare versions may use a different local route; the [Cron Triggers documentation](https://developers.cloudflare.com/workers/configuration/cron-triggers/#test-cron-triggers-locally) describes the local handler mechanism.
 
 ## Troubleshooting environment variables
 

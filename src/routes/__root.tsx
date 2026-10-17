@@ -25,6 +25,7 @@ import { TooltipProvider } from "@/client/components/ui/tooltip";
 import appCss from "@/client/styles/app.css?url";
 import { useSession } from "@/lib/auth-client";
 import { isHostedClientAuthMode } from "@/lib/auth-mode";
+import { clientConfigScript } from "@/lib/client-config";
 import { Toaster } from "sonner";
 import { queryClient } from "@/client/tanstack-db";
 import { getActiveOrganizationId } from "@/lib/auth-session";
@@ -136,6 +137,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <script
           dangerouslySetInnerHTML={{ __html: themePreferenceInitScript }}
         />
+        {/* Runtime client settings; must run before the app's scripts. */}
+        <script dangerouslySetInnerHTML={{ __html: clientConfigScript() }} />
         <HeadContent />
       </head>
       <body>

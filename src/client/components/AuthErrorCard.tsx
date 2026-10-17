@@ -15,6 +15,7 @@ import {
 } from "@/client/components/ui/card";
 import { isSessionClientAuthMode } from "@/lib/auth-mode";
 import { getSignInHref, getSignInHrefForLocation } from "@/lib/auth-redirect";
+import { getClientConfig } from "@/lib/client-config";
 
 const CLOUDFLARE_SETUP_GUIDE_URL =
   "https://github.com/every-app/open-seo/blob/main/docs/SELF_HOSTING_CLOUDFLARE.md#2-configure-authentication-and-secrets";
@@ -62,7 +63,7 @@ function AuthConfigErrorCard({ message, onRetry }: CardProps) {
   // Only name a mode's settings when the client build names that mode. With
   // AUTH_MODE unset here the server mode is unknown, and the alert above
   // already carries the server's exact message.
-  const clientAuthMode = import.meta.env.AUTH_MODE;
+  const clientAuthMode = getClientConfig().AUTH_MODE;
 
   return (
     <Card className="w-full max-w-2xl">
