@@ -56,6 +56,10 @@ export function mapDataforseoPathToCreditFeature(
       return "ai_prompt_responses";
     case "business_data":
       return "local_seo";
+    // Serper.dev organic SERPs (see src/server/lib/serper.ts), the same
+    // feature as DataForSEO's organic SERP endpoints.
+    case "serper":
+      return "keyword_research";
     case "keywords_data":
       return "keyword_research";
     case "dataforseo_labs": {

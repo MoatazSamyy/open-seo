@@ -27,6 +27,7 @@ import {
   rankCheckCostApprovalError,
 } from "@/shared/rank-tracking";
 import { isHostedServerAuthMode } from "@/server/lib/runtime-env";
+import { getRankCheckMethod } from "@/server/lib/serp-provider";
 
 const SINGLE_ATTEMPT_STEP_CONFIG = {
   retries: { limit: 0, delay: "1 second" as const },
@@ -89,7 +90,7 @@ async function prepareRankCheckKeywords(input: {
     trackingKeywords.map((kw) => kw.keyword),
     input.devices,
     input.serpDepth,
-    input.trigger === "scheduled" ? "queued" : "live",
+    await getRankCheckMethod(input.trigger),
   );
   if (input.maxCostCredits != null && costCredits > input.maxCostCredits) {
     throw new AppError(
@@ -376,11 +377,12 @@ export class RankCheckWorkflow extends WorkflowEntrypoint<
           locationName,
           runId,
         };
-        // Scheduled checks use DataForSEO's task queue (~30% of live cost);
-        // manual checks stay on the live endpoint for instant results, and
-        // only the pairs the live endpoint missed go to the queue.
+        // Scheduled checks use DataForSEO's task queue (~30% of live cost),
+        // unless Serper serves SERPs (see getRankCheckMethod); manual checks
+        // stay on the live endpoint for instant results, and only the pairs
+        // the live endpoint missed go to the queue.
         queueStats =
-          trigger === "scheduled"
+          (await getRankCheckMethod(trigger)) === "queued"
             ? await runQueuedCheck(step, checkContext)
             : await runLiveCheck(step, checkContext);
       } catch (error) {

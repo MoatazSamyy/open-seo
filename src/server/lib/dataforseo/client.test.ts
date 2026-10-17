@@ -65,6 +65,8 @@ vi.mock("@/server/billing/subscription", async (importOriginal) => {
 
 vi.mock("@/server/lib/runtime-env", () => ({
   isHostedServerAuthMode: isHostedServerAuthModeMock,
+  // No SERP_PROVIDER, so live SERPs route to the mocked DataForSEO fetchers.
+  getOptionalEnvValue: vi.fn(async () => undefined),
 }));
 
 vi.mock("@/server/lib/posthog", () => ({

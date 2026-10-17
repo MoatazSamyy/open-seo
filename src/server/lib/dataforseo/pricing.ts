@@ -37,6 +37,7 @@ import {
   SERP_ANALYSIS_DEPTH,
 } from "@/server/lib/dataforseo/serp";
 import { fetchLighthouseResult } from "@/server/lib/dataforseo/lighthouse";
+import { serperUsd } from "@/server/lib/serper";
 import {
   fetchLlmAggregatedMetrics,
   fetchLlmCrossAggregatedMetrics,
@@ -252,16 +253,16 @@ export const dataforseoPricing = {
     relevantPages: priced(fetchRelevantPages, (input) => labsUsd(input.limit)),
   },
   serp: {
-    live: priced(fetchLiveSerp, (input) =>
-      serpUsd(
-        clampSerpDepth(input.depth ?? SERP_ANALYSIS_DEPTH),
-        "live",
-        input.keyword,
-      ),
-    ),
-    rankCheck: priced(fetchRankCheckSerp, (input) =>
-      serpUsd(clampSerpDepth(input.depth), "live", input.keyword),
-    ),
+    // Live organic SERPs may be served by Serper (see serp-provider.ts), so the
+    // reserved estimate covers whichever provider costs more.
+    live: priced(fetchLiveSerp, (input) => {
+      const depth = clampSerpDepth(input.depth ?? SERP_ANALYSIS_DEPTH);
+      return Math.max(serpUsd(depth, "live", input.keyword), serperUsd(depth));
+    }),
+    rankCheck: priced(fetchRankCheckSerp, (input) => {
+      const depth = clampSerpDepth(input.depth);
+      return Math.max(serpUsd(depth, "live", input.keyword), serperUsd(depth));
+    }),
     rankCheckTaskPost: priced(postRankCheckTasks, (input) =>
       input.tasks.reduce(
         (sum, task) =>

@@ -64,6 +64,11 @@ declare namespace Cloudflare {
 
     // DataForSEO API Basic auth value (base64 of login:password)
     DATAFORSEO_API_KEY: string;
+    // Live organic SERP provider: "dataforseo" (default) or "serper". See
+    // docs/maintainers/specs/0016-serp-provider-routing.md.
+    SERP_PROVIDER?: string;
+    // Serper.dev API key; required when SERP_PROVIDER=serper.
+    SERPER_API_KEY?: string;
     AI_VISIBILITY_WORKFLOW: Workflow<
       (
         | { runId: string }

@@ -45,12 +45,14 @@ import {
   fetchAdsSearchVolume,
 } from "@/server/lib/dataforseo/google-ads";
 import {
-  fetchLiveSerp,
   fetchLocalSerp,
-  fetchRankCheckSerp,
   postLocalSerpTasks,
   postRankCheckTasks,
 } from "@/server/lib/dataforseo/serp";
+import {
+  fetchRoutedLiveSerp,
+  fetchRoutedRankCheckSerp,
+} from "@/server/lib/serp-provider";
 import { fetchLighthouseResult } from "@/server/lib/dataforseo/lighthouse";
 import {
   fetchLlmAggregatedMetrics,
@@ -206,13 +208,17 @@ export function createDataforseoClient(customer: BillingCustomerContext) {
       ),
     },
     serp: {
-      live: meter(customer, fetchLiveSerp, dataforseoPricing.serp.live),
+      // Live organic SERPs go to the operator's SERP provider (DataForSEO or
+      // Serper; see serp-provider.ts). Everything else here is DataForSEO.
+      live: meter(customer, fetchRoutedLiveSerp, dataforseoPricing.serp.live),
       // A rank check batch shares one credit hold and one settle across its
       // live calls (see meterDataforseoCalls). Resolves per call, in order.
-      rankCheckBatch: (inputs: Parameters<typeof fetchRankCheckSerp>[0][]) =>
+      rankCheckBatch: (
+        inputs: Parameters<typeof fetchRoutedRankCheckSerp>[0][],
+      ) =>
         meterDataforseoCalls(
           customer,
-          inputs.map((input) => () => fetchRankCheckSerp(input)),
+          inputs.map((input) => () => fetchRoutedRankCheckSerp(input)),
           inputs.map((input) =>
             creditsForProviderUsd(dataforseoPricing.serp.rankCheck(input)),
           ),

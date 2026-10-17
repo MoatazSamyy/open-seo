@@ -134,7 +134,7 @@ export interface RankCheckResult {
   serpFeatures: string[];
 }
 
-function buildRankCheckResult(
+export function buildRankCheckResult(
   input: { keywordId: string; keyword: string; targetDomain: string },
   items: SerpLiveItem[],
 ): RankCheckResult {
