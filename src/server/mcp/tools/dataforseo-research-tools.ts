@@ -1154,7 +1154,7 @@ export const getKeywordMetricsTool = {
   config: {
     title: "Get keyword metrics",
     description:
-      "Hydrate up to 700 known keywords with search volume, keyword difficulty (KD), search intent, CPC, competition, and monthly trends in a single call. Use it to score candidate or known keywords — including Search Console striking-distance queries — by real demand and ranking difficulty. For countries served from Google Ads data (e.g. Iceland), KD and intent are null. Charges credits.",
+      "Hydrate up to 700 known keywords with search volume, keyword difficulty (KD), search intent, CPC, competition, and monthly trends in a single call. Use it to score candidate or known keywords — including Search Console striking-distance queries — by real demand and ranking difficulty. For countries served from Google Ads data (e.g. Iceland), or when the server sources metrics from Keywords Everywhere, KD and intent are null. Charges credits.",
     inputSchema: getKeywordMetricsInputSchema,
     outputSchema: z.looseObject({
       keywords: z.array(looseObjectOutputSchema),

@@ -39,6 +39,10 @@ import {
 import { fetchLighthouseResult } from "@/server/lib/dataforseo/lighthouse";
 import { serperUsd } from "@/server/lib/serper";
 import {
+  fetchKeywordsEverywhereData,
+  keywordsEverywhereUsd,
+} from "@/server/lib/keywords-everywhere";
+import {
   fetchLlmAggregatedMetrics,
   fetchLlmCrossAggregatedMetrics,
   fetchLlmMentionsSearch,
@@ -286,6 +290,11 @@ export const dataforseoPricing = {
     ),
     serpCompetitors: priced(fetchSerpCompetitors, (input) =>
       labsUsd(input.limit),
+    ),
+  },
+  keywordsEverywhere: {
+    keywordData: priced(fetchKeywordsEverywhereData, (input) =>
+      keywordsEverywhereUsd(input.keywords.length),
     ),
   },
   lighthouse: {

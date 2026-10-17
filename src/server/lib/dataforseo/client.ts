@@ -53,6 +53,7 @@ import {
   fetchRoutedLiveSerp,
   fetchRoutedRankCheckSerp,
 } from "@/server/lib/serp-provider";
+import { fetchKeywordsEverywhereData } from "@/server/lib/keywords-everywhere";
 import { fetchLighthouseResult } from "@/server/lib/dataforseo/lighthouse";
 import {
   fetchLlmAggregatedMetrics,
@@ -262,6 +263,16 @@ export function createDataforseoClient(customer: BillingCustomerContext) {
         customer,
         fetchSerpCompetitors,
         dataforseoPricing.labs.serpCompetitors,
+      ),
+    },
+    // Not DataForSEO: country-level keyword metrics when the operator picks
+    // Keywords Everywhere (see fetchKeywordMetricsForList). Metered through
+    // the same seam so hosted credits cover it.
+    keywordsEverywhere: {
+      keywordData: meter(
+        customer,
+        fetchKeywordsEverywhereData,
+        dataforseoPricing.keywordsEverywhere.keywordData,
       ),
     },
     lighthouse: {

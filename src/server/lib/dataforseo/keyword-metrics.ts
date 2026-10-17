@@ -4,16 +4,25 @@ import {
   type AdsKeywordItem,
 } from "@/server/lib/dataforseo/google-ads";
 import type { KeywordOverviewItem } from "@/server/lib/dataforseo/labs";
+import {
+  KEYWORDS_EVERYWHERE_BATCH_SIZE,
+  resolveKeywordsEverywhereCountry,
+  type KeywordsEverywhereItem,
+} from "@/server/lib/keywords-everywhere";
 import type { CreditFeature } from "@/shared/billing-credit-features";
 import { getKeywordDataProvider } from "@/shared/keyword-locations";
 import type { MonthlySearch } from "@/types/keywords";
 
 type DataforseoClient = ReturnType<typeof createDataforseoClient>;
 
-// Narrowed to the two endpoints the helper uses, so tests can fake it cheaply.
+// Narrowed to the endpoints the helper uses, so tests can fake it cheaply.
 type KeywordMetricsClient = {
   labs: Pick<DataforseoClient["labs"], "keywordOverview">;
   keywords: Pick<DataforseoClient["keywords"], "adsSearchVolume">;
+  keywordsEverywhere: Pick<
+    DataforseoClient["keywordsEverywhere"],
+    "keywordData"
+  >;
 };
 
 /**
@@ -108,9 +117,80 @@ function normalizeAdsKeyword(
   };
 }
 
+const MONTHS = [
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december",
+];
+
+// Keywords Everywhere rows carry volume/CPC/competition/trend but, like Google
+// Ads rows, no keyword difficulty or search intent. Its competition is already
+// a 0-1 ratio, and it has no LOW/MEDIUM/HIGH level.
+function normalizeKeywordsEverywhereItem(
+  item: KeywordsEverywhereItem,
+): KeywordMetricRow {
+  const cpc = item.cpc?.value != null ? Number(item.cpc.value) : null;
+  return {
+    keyword: item.keyword,
+    searchVolume: item.vol ?? null,
+    cpc: cpc != null && Number.isFinite(cpc) ? cpc : null,
+    competition: item.competition ?? null,
+    competitionLevel: null,
+    keywordDifficulty: null,
+    intent: null,
+    monthlySearches: item.trend.map((entry) => ({
+      year: entry.year,
+      month: MONTHS.indexOf(entry.month.toLowerCase()) + 1,
+      searchVolume: entry.value,
+    })),
+  };
+}
+
+async function fetchKeywordsEverywhereMetrics(
+  client: KeywordMetricsClient,
+  keywords: string[],
+  country: string,
+  creditFeature: CreditFeature,
+): Promise<KeywordMetricRow[]> {
+  const rows: KeywordMetricRow[] = [];
+  for (let i = 0; i < keywords.length; i += KEYWORDS_EVERYWHERE_BATCH_SIZE) {
+    const batch = keywords.slice(i, i + KEYWORDS_EVERYWHERE_BATCH_SIZE);
+    const items = await client.keywordsEverywhere.keywordData({
+      keywords: batch,
+      country,
+      creditFeature,
+    });
+    const covered = new Set<string>();
+    for (const item of items) {
+      covered.add(item.keyword.toLowerCase());
+      rows.push(normalizeKeywordsEverywhereItem(item));
+    }
+    // Every keyword gets a row, so a refresh clears stale stored metrics.
+    rows.push(
+      ...batch
+        .filter((keyword) => !covered.has(keyword.toLowerCase()))
+        .map(nullMetricRow),
+    );
+  }
+  return rows;
+}
+
 // Hydrate a keyword list with fresh metrics: route by location (Labs vs Google
 // Ads), batch under the per-call cap, and drop items DataForSEO returns without
 // a keyword. `creditFeature` is required so spend is always attributed.
+//
+// When the operator picks Keywords Everywhere (KEYWORD_METRICS_PROVIDER), it
+// serves country-level requests for the countries it covers, with no keyword
+// difficulty or intent. Local requests and other countries stay on DataForSEO.
 //
 // `locationName` (canonical DataForSEO string, e.g. a city) scopes volume /
 // CPC / competition to that location via Google Ads — the only source that
@@ -130,6 +210,18 @@ export async function fetchKeywordMetricsForList(
     locationName?: string;
   },
 ): Promise<KeywordMetricRow[]> {
+  const keywordsEverywhereCountry = params.locationName
+    ? null
+    : await resolveKeywordsEverywhereCountry(params.locationCode);
+  if (keywordsEverywhereCountry) {
+    return fetchKeywordsEverywhereMetrics(
+      client,
+      params.keywords,
+      keywordsEverywhereCountry,
+      params.creditFeature,
+    );
+  }
+
   const useGoogleAds =
     getKeywordDataProvider(params.locationCode) === "google_ads";
   const rows: KeywordMetricRow[] = [];

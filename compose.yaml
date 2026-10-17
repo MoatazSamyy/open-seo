@@ -19,10 +19,12 @@ services:
       - OPENSEO_TELEMETRY_DISABLED=${OPENSEO_TELEMETRY_DISABLED:-}
       - DO_NOT_TRACK=${DO_NOT_TRACK:-}
       - DATAFORSEO_API_KEY=${DATAFORSEO_API_KEY}
-      # Optional: Serper.dev for desktop organic SERPs. See
-      # docs/SERP_PROVIDERS.md
+      # Optional: Serper.dev for desktop organic SERPs and Keywords
+      # Everywhere for keyword metrics. See docs/DATA_PROVIDERS.md
       - SERP_PROVIDER=${SERP_PROVIDER:-}
       - SERPER_API_KEY=${SERPER_API_KEY:-}
+      - KEYWORD_METRICS_PROVIDER=${KEYWORD_METRICS_PROVIDER:-}
+      - KEYWORDS_EVERYWHERE_API_KEY=${KEYWORDS_EVERYWHERE_API_KEY:-}
       # Optional: AI features (the SAM agent). Without this the setup
       # gate in the app asks for the key, but nothing here would forward it.
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}

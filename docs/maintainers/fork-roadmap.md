@@ -12,8 +12,8 @@ outage or price change doesn't take the product down.
 
 | Step | Data                                  | Alternative provider | Status      |
 | ---- | ------------------------------------- | -------------------- | ----------- |
-| 1a   | Live organic SERPs + live rank checks | Serper.dev           | In progress |
-| 1b   | Keyword metrics (volume, CPC)         | To be chosen         | Planned     |
+| 1a   | Live organic SERPs + live rank checks | Serper.dev           | Done        |
+| 1b   | Keyword metrics (volume, CPC)         | Keywords Everywhere  | In progress |
 | 1c   | Backlinks summary                     | To be chosen         | Planned     |
 | 1d   | Provider health + failover            | —                    | Planned     |
 
@@ -23,10 +23,12 @@ outage or price change doesn't take the product down.
 analysis, the `get_serp_results` MCP tool, live rank checks) to Serper.dev.
 Everything else stays on DataForSEO.
 
-**1b — Keyword metrics seam.** Pull the volume/CPC/competition fields out of
-the Labs row shape into a provider-neutral row, so a second source can fill
-them. Difficulty and intent stay Labs-only and stay nullable, which the UI
-already handles for Google-Ads-only countries.
+**1b — Keyword metrics provider.** See
+[`specs/0017-keyword-metrics-provider.md`](./specs/0017-keyword-metrics-provider.md).
+`KEYWORD_METRICS_PROVIDER=keywords_everywhere` serves country-level volume,
+CPC, competition, and trend from Keywords Everywhere. Difficulty and intent
+stay Labs-only and are null for those rows. It costs more per keyword than
+Labs, so it's a redundancy option that milestone 1d turns into a fallback.
 
 **1c — Backlinks seam.** Same pattern for the backlinks summary (referring
 domains, backlinks, rank). Lists of individual links stay on DataForSEO.

@@ -60,6 +60,9 @@ export function mapDataforseoPathToCreditFeature(
     // feature as DataForSEO's organic SERP endpoints.
     case "serper":
       return "keyword_research";
+    // Keywords Everywhere keyword metrics (src/server/lib/keywords-everywhere.ts).
+    case "keywords_everywhere":
+      return "keyword_research";
     case "keywords_data":
       return "keyword_research";
     case "dataforseo_labs": {

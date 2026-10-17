@@ -69,6 +69,12 @@ declare namespace Cloudflare {
     SERP_PROVIDER?: string;
     // Serper.dev API key; required when SERP_PROVIDER=serper.
     SERPER_API_KEY?: string;
+    // Country-level keyword metrics provider: "dataforseo" (default) or
+    // "keywords_everywhere". See fetchKeywordMetricsForList.
+    KEYWORD_METRICS_PROVIDER?: string;
+    // Keywords Everywhere API key; required when
+    // KEYWORD_METRICS_PROVIDER=keywords_everywhere.
+    KEYWORDS_EVERYWHERE_API_KEY?: string;
     AI_VISIBILITY_WORKFLOW: Workflow<
       (
         | { runId: string }

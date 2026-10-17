@@ -1,17 +1,19 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { fetchKeywordMetricsForList } from "./keyword-metrics";
 
 type Client = Parameters<typeof fetchKeywordMetricsForList>[0];
 
-// Minimal fake client exposing only the two endpoints the helper touches.
+// Minimal fake client exposing only the endpoints the helper touches.
 function fakeClient(overrides: {
   keywordOverview?: Client["labs"]["keywordOverview"];
   adsSearchVolume?: Client["keywords"]["adsSearchVolume"];
+  keywordData?: Client["keywordsEverywhere"]["keywordData"];
 }): Client {
   return {
     labs: { keywordOverview: overrides.keywordOverview ?? vi.fn() },
     keywords: { adsSearchVolume: overrides.adsSearchVolume ?? vi.fn() },
+    keywordsEverywhere: { keywordData: overrides.keywordData ?? vi.fn() },
   };
 }
 
@@ -221,5 +223,95 @@ describe("fetchKeywordMetricsForList", () => {
       searchVolume: null,
       keywordDifficulty: null,
     });
+  });
+});
+
+describe("fetchKeywordMetricsForList with Keywords Everywhere", () => {
+  beforeEach(() => {
+    vi.stubEnv("KEYWORD_METRICS_PROVIDER", "keywords_everywhere");
+    vi.stubEnv("KEYWORDS_EVERYWHERE_API_KEY", "ke-key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () =>
+        Response.json({ "": "Global", us: "United States" }),
+      ),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("serves country-level metrics from Keywords Everywhere", async () => {
+    const keywordData = vi.fn().mockResolvedValue([
+      {
+        keyword: "best crm",
+        vol: 1000,
+        cpc: { currency: "$", value: "3.20" },
+        competition: 0.5,
+        trend: [{ month: "May", year: 2026, value: 900 }],
+      },
+    ]);
+    const keywordOverview = vi.fn();
+    const client = fakeClient({ keywordData, keywordOverview });
+
+    const rows = await fetchKeywordMetricsForList(client, {
+      keywords: ["best crm", "crm for dentists"],
+      locationCode: 2840,
+      languageCode: "en",
+      creditFeature: "keyword_research",
+    });
+
+    expect(keywordOverview).not.toHaveBeenCalled();
+    expect(keywordData).toHaveBeenCalledWith({
+      keywords: ["best crm", "crm for dentists"],
+      country: "us",
+      creditFeature: "keyword_research",
+    });
+    expect(rows).toEqual([
+      {
+        keyword: "best crm",
+        searchVolume: 1000,
+        cpc: 3.2,
+        competition: 0.5,
+        competitionLevel: null,
+        keywordDifficulty: null,
+        intent: null,
+        monthlySearches: [{ year: 2026, month: 5, searchVolume: 900 }],
+      },
+      expect.objectContaining({
+        keyword: "crm for dentists",
+        searchVolume: null,
+      }),
+    ]);
+  });
+
+  it("keeps local requests and uncovered countries on DataForSEO", async () => {
+    const keywordData = vi.fn();
+    const keywordOverview = vi.fn().mockResolvedValue([]);
+    const adsSearchVolume = vi.fn().mockResolvedValue([]);
+    const client = fakeClient({
+      keywordData,
+      keywordOverview,
+      adsSearchVolume,
+    });
+
+    // Germany isn't in the stubbed country list.
+    await fetchKeywordMetricsForList(client, {
+      keywords: ["beste crm"],
+      locationCode: 2276,
+      languageCode: "de",
+      creditFeature: "keyword_research",
+    });
+    await fetchKeywordMetricsForList(client, {
+      keywords: ["best crm"],
+      locationCode: 2840,
+      languageCode: "en",
+      locationName: "Austin,Texas,United States",
+      creditFeature: "keyword_research",
+    });
+
+    expect(keywordData).not.toHaveBeenCalled();
+    expect(keywordOverview).toHaveBeenCalledTimes(2);
   });
 });
