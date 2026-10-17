@@ -1,3 +1,4 @@
+import { blobs, kv, type BlobStore } from "@/platform/runtime";
 import { getGoogleAccessToken } from "@/server/features/google/googleOAuth";
 import type { SamChatAgent } from "@/server/features/sam/SamChatAgent";
 import { captureServerError } from "@/server/lib/posthog";
@@ -111,7 +112,7 @@ async function deleteOauthGrants(namespace: KVNamespace, userId: string) {
 }
 
 async function deleteOrganizationPromptCaches(
-  bucket: R2Bucket,
+  bucket: BlobStore,
   organizationIds: string[],
 ) {
   const targets = new Set(organizationIds);
@@ -121,14 +122,13 @@ async function deleteOrganizationPromptCaches(
     const page = await bucket.list({
       prefix: PROMPT_CACHE_PREFIX,
       cursor,
-      include: ["customMetadata"],
     });
     for (const object of page.objects) {
-      if (targets.has(object.customMetadata?.organizationId ?? "")) {
+      if (targets.has(object.customMetadata.organizationId ?? "")) {
         keys.push(object.key);
       }
     }
-    cursor = page.truncated ? page.cursor : undefined;
+    cursor = page.cursor;
   } while (cursor);
   for (let index = 0; index < keys.length; index += 1_000) {
     await bucket.delete(keys.slice(index, index + 1_000));
@@ -206,7 +206,7 @@ async function eraseStorage(env: Env, payload: GdprStorageErasurePayload) {
     // The scratchpad DO lives in the open-seo-audit worker; destroy is the
     // same full wipe destroyForErasure performs.
     await env.AUDIT_ENGINE.destroyScratchpad(auditId);
-    await env.KV.delete(`audit-progress:${auditId}`);
+    await kv.delete(`audit-progress:${auditId}`);
   }
   // The autumn:customer-ensured KV markers are deliberately left alone: they
   // hold no personal data (org id key, "1" value), expire on their own 24h
@@ -216,21 +216,21 @@ async function eraseStorage(env: Env, payload: GdprStorageErasurePayload) {
   // Dub referral pins key on user/org ids and store a referral click
   // identifier. The Dub-side customer record (pseudonymous external id) is
   // removed via the erasure runbook.
-  await env.KV.delete(`${DUB_REFERRED_USER_KV_PREFIX}${payload.userId}`);
+  await kv.delete(`${DUB_REFERRED_USER_KV_PREFIX}${payload.userId}`);
   for (const organizationId of payload.organizationIds) {
-    await env.KV.delete(`${DUB_REFERRED_ORG_KV_PREFIX}${organizationId}`);
+    await kv.delete(`${DUB_REFERRED_ORG_KV_PREFIX}${organizationId}`);
   }
 
   for (let index = 0; index < payload.r2Keys.length; index += 1_000) {
-    await env.R2.delete(payload.r2Keys.slice(index, index + 1_000));
+    await blobs.delete(payload.r2Keys.slice(index, index + 1_000));
   }
   const promptCacheObjects = await deleteOrganizationPromptCaches(
-    env.R2,
+    blobs,
     payload.organizationIds,
   );
   let aiVisibilityObjects = 0;
   for (const projectId of payload.aiVisibilityProjectIds) {
-    aiVisibilityObjects += await deleteProjectAiObjects(env.R2, projectId);
+    aiVisibilityObjects += await deleteProjectAiObjects(blobs, projectId);
   }
 
   const oauth = await deleteOauthGrants(env.OAUTH_KV, payload.userId);

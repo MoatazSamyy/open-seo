@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { env } from "cloudflare:workers";
+import { getConfig } from "@/platform/runtime";
 import { isHostedAuthMode } from "@/lib/auth-mode";
 import { resolveHostedContext } from "@/middleware/ensure-user/hosted";
 import { autumn } from "@/server/billing/autumn";
@@ -9,7 +9,7 @@ import { autumn } from "@/server/billing/autumn";
 // opened before that change still read their customer here; every other
 // route asks them to reload. Delete this once those tabs are gone.
 async function handleAutumnRequest(request: Request) {
-  if (!isHostedAuthMode(env.AUTH_MODE)) {
+  if (!isHostedAuthMode(getConfig("AUTH_MODE"))) {
     return new Response("Not found", {
       status: 404,
     });

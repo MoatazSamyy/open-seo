@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { env } from "cloudflare:workers";
+import { getConfig } from "@/platform/runtime";
 import { getAuth, hasSessionAuthConfig } from "@/lib/auth";
 import { isSessionAuthMode } from "@/lib/auth-mode";
 
 async function handleAuthRequest(request: Request) {
-  if (!isSessionAuthMode(env.AUTH_MODE)) {
+  if (!isSessionAuthMode(getConfig("AUTH_MODE"))) {
     return new Response("Not found", {
       status: 404,
     });

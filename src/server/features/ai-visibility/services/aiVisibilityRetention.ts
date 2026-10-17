@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { blobs, kv } from "@/platform/runtime";
 import { pruneAiHistory } from "../repositories/aiVisibilityRetentionRepository";
 import { aiObjectHasExpired } from "./aiVisibilityStorage";
 
@@ -8,17 +8,16 @@ const CURSOR_KEY = "ai-visibility:retention-cursor";
 export async function pruneAiVisibility() {
   const now = new Date();
   await pruneAiHistory(now);
-  const cursor = await env.KV.get(CURSOR_KEY);
-  const page = await env.R2.list({
+  const cursor = await kv.get(CURSOR_KEY);
+  const page = await blobs.list({
     prefix: "ai-visibility/",
     cursor: cursor ?? undefined,
     limit: 500,
-    include: ["customMetadata"],
   });
   const expired = page.objects
     .filter((object) => aiObjectHasExpired(object, now.getTime()))
     .map((object) => object.key);
-  if (expired.length) await env.R2.delete(expired);
-  if (page.truncated) await env.KV.put(CURSOR_KEY, page.cursor);
-  else await env.KV.delete(CURSOR_KEY);
+  if (expired.length) await blobs.delete(expired);
+  if (page.cursor) await kv.put(CURSOR_KEY, page.cursor);
+  else await kv.delete(CURSOR_KEY);
 }

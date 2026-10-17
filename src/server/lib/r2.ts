@@ -1,7 +1,7 @@
-import { env } from "cloudflare:workers";
+import { blobs } from "@/platform/runtime";
 
 export async function getJsonFromR2(key: string): Promise<string> {
-  const object = await env.R2.get(key);
+  const object = await blobs.get(key);
   if (!object) {
     throw new Error("Audit payload not found");
   }
@@ -13,11 +13,7 @@ export async function putTextToR2(
   key: string,
   body: string,
 ): Promise<{ key: string; sizeBytes: number }> {
-  await env.R2.put(key, body, {
-    httpMetadata: {
-      contentType: "application/json",
-    },
-  });
+  await blobs.put(key, body, { contentType: "application/json" });
 
   return {
     key,

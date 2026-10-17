@@ -1,5 +1,5 @@
 import { APIError } from "better-auth/api";
-import { env } from "cloudflare:workers";
+import { getConfigByName } from "@/platform/runtime";
 
 // Who may create an account in AUTH_MODE=password. The deployment is the
 // operator's own DataForSEO bill, so sign-up is closed except to the emails
@@ -22,7 +22,7 @@ function isAllowedSignupEmail(email: string, allowlist: string) {
 }
 
 export function assertPasswordSignupAllowed(email: string) {
-  const allowlist: unknown = Reflect.get(env, "ALLOWED_SIGNUP_EMAILS");
+  const allowlist: unknown = getConfigByName("ALLOWED_SIGNUP_EMAILS");
   if (typeof allowlist === "string" && isAllowedSignupEmail(email, allowlist)) {
     return;
   }

@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { getConfig } from "@/platform/runtime";
 import { createFileRoute } from "@tanstack/react-router";
 import { isHostedAuthMode } from "@/lib/auth-mode";
 import { resolveUserContextFromHeaders } from "@/middleware/ensure-user/resolve";
@@ -32,7 +32,7 @@ async function handleReportRequest(
     // config or session-store failure must not masquerade as "you are logged
     // out", and the self-hosted modes have no sign-in page to complete.
     if (asAppError(error)?.code !== "UNAUTHENTICATED") throw error;
-    if (!isHostedAuthMode(env.AUTH_MODE)) {
+    if (!isHostedAuthMode(getConfig("AUTH_MODE"))) {
       return textResponse("Sign in to read this report.", 401);
     }
     // The most likely real entry: someone opening a report link in a browser

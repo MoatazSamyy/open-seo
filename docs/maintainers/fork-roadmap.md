@@ -77,9 +77,12 @@ server that runs on any host with only Postgres next to it.
   each page (`src/lib/client-config.ts`) instead of baking them into the
   build, so the Dockerfile builds once and the container starts without
   rebuilding. Still runs workerd. Independent of everything below.
-- **3b — Platform layer.** Put `env`, `waitUntil`, KV, and blob storage
-  behind `src/platform/` with a Cloudflare implementation only. No behavior
-  change; makes the rest possible.
+- **3b — Platform layer.** Done. `src/platform/runtime.ts` is the seam for
+  config (`getConfig`), `waitUntil`, `kv`, and `blobs`, with the Cloudflare
+  implementation. A lint rule (`no-restricted-imports` in `.oxlintrc.json`)
+  keeps everything else off `cloudflare:workers`, except the files listed
+  there that still need Workflow, Durable Object, service, or Browser
+  bindings; 3c-3e move those.
 - **3c — Node runtime.** A Node HTTP entry, a Postgres KV table, filesystem
   blob storage, timers for cron, and Postgres only.
 - **3d — Durable workflows on Postgres.** A runner that persists `step.do`

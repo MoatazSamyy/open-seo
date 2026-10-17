@@ -1,4 +1,4 @@
-import { waitUntil } from "cloudflare:workers";
+import { waitUntil } from "@/platform/runtime";
 import { z } from "zod";
 import type { BillingCustomerContext } from "@/server/billing/subscription";
 import { createDataforseoClient } from "@/server/lib/dataforseo";

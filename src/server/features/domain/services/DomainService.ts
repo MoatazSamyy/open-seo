@@ -1,4 +1,4 @@
-import { waitUntil } from "cloudflare:workers";
+import { waitUntil } from "@/platform/runtime";
 import { buildCacheKey, getCached, setCached } from "@/server/lib/r2-cache";
 import { z } from "zod";
 import type { BillingCustomerContext } from "@/server/billing/subscription";

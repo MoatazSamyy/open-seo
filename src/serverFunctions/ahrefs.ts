@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { env } from "cloudflare:workers";
+import { kv } from "@/platform/runtime";
 import { chunk } from "remeda";
 import { z } from "zod";
 import { normalizeDomainInput } from "@/server/lib/domainUtils";
@@ -78,11 +78,11 @@ async function resolveDomainRating(domain: string): Promise<number | null> {
   const cacheKey = `${CACHE_PREFIX}${domain}`;
   // KV returns JS `null` only when the key is absent; a cached "no rating" is
   // stored as the string "null", so cache hits (including nulls) skip the fetch.
-  const cached = await env.KV.get(cacheKey);
+  const cached = await kv.get(cacheKey);
   if (cached !== null) return parseCachedRating(cached);
 
   const dr = await fetchDomainRating(domain);
-  await env.KV.put(cacheKey, JSON.stringify(dr), {
+  await kv.put(cacheKey, JSON.stringify(dr), {
     expirationTtl: CACHE_TTL_SECONDS,
   });
   return dr;

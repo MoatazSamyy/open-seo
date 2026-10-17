@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { blobs } from "@/platform/runtime";
 import { deleteProjectAiObjects } from "./aiVisibilityStorage";
 import { pruneAiVisibility } from "./aiVisibilityRetention";
 
@@ -37,8 +38,7 @@ afterEach(() => vi.useRealTimers());
 
 describe("AI visibility storage", () => {
   it("deletes all pages under the exact project's private prefix", async () => {
-    const list = vi
-      .fn()
+    mocks.list
       .mockResolvedValueOnce({
         objects: [{ key: "ai-visibility/project-a/exports/one" }],
         truncated: true,
@@ -48,15 +48,15 @@ describe("AI visibility storage", () => {
         objects: [{ key: "ai-visibility/project-a/exports/two" }],
         truncated: false,
       });
-    const remove = vi.fn();
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- this helper uses only list and delete on the bucket
-    const bucket = { list, delete: remove } as unknown as R2Bucket;
-    expect(await deleteProjectAiObjects(bucket, "project-a")).toBe(2);
-    expect(list).toHaveBeenNthCalledWith(2, {
-      prefix: "ai-visibility/project-a/",
-      cursor: "page-two",
-    });
-    expect(remove.mock.calls).toEqual([
+    expect(await deleteProjectAiObjects(blobs, "project-a")).toBe(2);
+    expect(mocks.list).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        prefix: "ai-visibility/project-a/",
+        cursor: "page-two",
+      }),
+    );
+    expect(mocks.deleteObjects.mock.calls).toEqual([
       [["ai-visibility/project-a/exports/one"]],
       [["ai-visibility/project-a/exports/two"]],
     ]);

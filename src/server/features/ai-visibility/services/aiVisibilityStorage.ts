@@ -1,6 +1,8 @@
+import type { BlobStore, StoredBlob } from "@/platform/runtime";
+
 /** Generated exports are private project data. */
 export async function deleteProjectAiObjects(
-  bucket: R2Bucket,
+  bucket: BlobStore,
   projectId: string,
 ) {
   let cursor: string | undefined;
@@ -13,16 +15,16 @@ export async function deleteProjectAiObjects(
     const keys = page.objects.map((object) => object.key);
     if (keys.length) await bucket.delete(keys);
     deleted += keys.length;
-    cursor = page.truncated ? page.cursor : undefined;
+    cursor = page.cursor;
   } while (cursor);
   return deleted;
 }
 
 /** Exports carry their expiry; anything without one is stale. */
 export function aiObjectHasExpired(
-  object: Pick<R2Object, "customMetadata">,
+  object: Pick<StoredBlob, "customMetadata">,
   now: number,
 ) {
-  const expiry = Date.parse(object.customMetadata?.expiresAt ?? "");
+  const expiry = Date.parse(object.customMetadata.expiresAt ?? "");
   return !Number.isFinite(expiry) || now >= expiry;
 }

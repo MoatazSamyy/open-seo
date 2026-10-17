@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { getConfig } from "@/platform/runtime";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { AppError } from "@/server/lib/errors";
 import { validateTeamDomain } from "@/shared/selfhost-checks";
@@ -39,10 +39,11 @@ function getValidatedTeamDomain(teamDomain: string) {
 export async function resolveCloudflareAccessContext(
   headers: Headers,
 ): Promise<EnsuredUserContext> {
-  const teamDomain = env.TEAM_DOMAIN
-    ? getValidatedTeamDomain(env.TEAM_DOMAIN)
+  const rawTeamDomain = getConfig("TEAM_DOMAIN");
+  const teamDomain = rawTeamDomain
+    ? getValidatedTeamDomain(rawTeamDomain)
     : null;
-  const policyAud = env.POLICY_AUD?.trim() || null;
+  const policyAud = getConfig("POLICY_AUD")?.trim() || null;
 
   if (!teamDomain || !policyAud) {
     const missing = [

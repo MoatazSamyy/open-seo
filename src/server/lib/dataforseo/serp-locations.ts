@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { kv } from "@/platform/runtime";
 import { z } from "zod";
 import { dataforseoGet } from "@/server/lib/dataforseo/core";
 import { assertOk } from "@/server/lib/dataforseo/envelope";
@@ -61,8 +61,7 @@ export async function fetchSerpLocationsForCountry(
 ): Promise<SerpLocationResult[]> {
   const iso = countryCode.toLowerCase();
 
-  const cached = await env.KV.get(cacheKey(iso), {
-    type: "json",
+  const cached = await kv.getJson(cacheKey(iso), {
     cacheTtl: KV_HOT_READ_TTL_SECONDS,
   });
   const hit = cachedLocationsSchema.safeParse(cached);
@@ -84,7 +83,7 @@ function fillFromOrigin(iso: string): Promise<SerpLocationResult[]> {
 
   const fill = fetchFromDataforseo(iso)
     .then(async (fresh) => {
-      await env.KV.put(cacheKey(iso), JSON.stringify(fresh), {
+      await kv.put(cacheKey(iso), JSON.stringify(fresh), {
         expirationTtl: KV_TTL_SECONDS,
       });
       return fresh;

@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { waitUntil } from "cloudflare:workers";
+import { waitUntil } from "@/platform/runtime";
 import { z } from "zod";
 import { GscService } from "@/server/features/gsc/services/GscService";
 import { hasGoogleOAuthConfig } from "@/server/features/google/oauth-config";

@@ -51,6 +51,12 @@
     "eslint/no-restricted-imports": [
       "error",
       {
+        "paths": [
+          {
+            "name": "cloudflare:workers",
+            "message": "Use config, waitUntil, kv, and blobs from \"@/platform/runtime\" so the app can run outside Workers (fork milestone 3). Only src/platform and the files that still need Workflow, Durable Object, or Browser bindings may import the Workers runtime directly."
+          }
+        ],
         "patterns": [
           {
             "group": ["@/db/d1", "@/db/d1/*", "@/db/pg", "@/db/pg/*"],
@@ -65,6 +71,37 @@
       "files": ["src/db/**", "src/lib/auth.ts"],
       "rules": {
         "eslint/no-restricted-imports": "off"
+      }
+    },
+    {
+      // The Workers runtime seam, tests that mock it, and the files that
+      // still need Workflow, Durable Object, service, or Browser bindings
+      // (moved behind src/platform in fork milestones 3c-3e).
+      "files": [
+        "src/platform/**",
+        "**/*.test.ts",
+        "src/audit-worker.ts",
+        "src/server/workflows/**",
+        "src/server/features/audit/AuditScratchpad.ts",
+        "src/server/features/audit/services/AuditService.ts",
+        "src/server/features/audit/services/auditReconciler.ts",
+        "src/server/features/ai-visibility/services/aiResearchKeywords.ts",
+        "src/server/features/ai-visibility/services/aiVisibilityRuns.ts",
+        "src/server/features/rank-tracking/services/RankTrackingService.ts",
+        "src/server/features/rank-tracking/services/rankCheckRunGuards.ts"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/db/d1", "@/db/d1/*", "@/db/pg", "@/db/pg/*"],
+                "message": "Import the provider-aware `db` from \"@/db\", tables from \"@/db/schema\", and batched writes via \"@/db/runBatch\"."
+              }
+            ]
+          }
+        ]
       }
     }
   ]

@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { getConfig } from "@/platform/runtime";
 import { createServerFn } from "@tanstack/react-start";
 import { getAuthMode } from "@/lib/auth-mode";
 import { WorkspaceMergeService } from "@/server/auth/workspace-merge";
@@ -9,7 +9,7 @@ import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 // self-host deployments, so the client can't gate this itself — the status
 // response is what hides the banner in other modes.
 function isCloudflareAccessMode() {
-  return getAuthMode(env.AUTH_MODE) === "cloudflare_access";
+  return getAuthMode(getConfig("AUTH_MODE")) === "cloudflare_access";
 }
 
 export const getWorkspaceMergeStatus = createServerFn({ method: "POST" })

@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { kv } from "@/platform/runtime";
 import { AppError } from "@/server/lib/errors";
 
 // Daily caps on invitation *emails*. The org plugin's invitationLimit bounds
@@ -12,9 +12,9 @@ const PER_ORG_DAILY_LIMIT = 50;
 const WINDOW_TTL_SECONDS = 60 * 60 * 24;
 
 async function bumpDailyCounter(key: string, limit: number) {
-  const count = Number((await env.KV.get(key)) ?? "0");
+  const count = Number((await kv.get(key)) ?? "0");
   if (count >= limit) return false;
-  await env.KV.put(key, String(count + 1), {
+  await kv.put(key, String(count + 1), {
     expirationTtl: WINDOW_TTL_SECONDS,
   });
   return true;

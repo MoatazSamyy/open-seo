@@ -1,4 +1,4 @@
-import { waitUntil } from "cloudflare:workers";
+import { waitUntil } from "@/platform/runtime";
 import { createFileRoute } from "@tanstack/react-router";
 import { ReportRepository } from "@/server/features/reports/repositories/ReportRepository";
 import {

@@ -1,4 +1,4 @@
-import { waitUntil } from "cloudflare:workers";
+import { waitUntil } from "@/platform/runtime";
 import {
   SERP_ANALYSIS_DEPTH,
   type SerpLiveItem,

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { env } from "cloudflare:workers";
+import { getConfig } from "@/platform/runtime";
 import { isHostedAuthMode } from "@/lib/auth-mode";
 
 // Unauthenticated setup/health endpoint for self-hosters: reports per-feature
@@ -7,7 +7,7 @@ import { isHostedAuthMode } from "@/lib/auth-mode";
 // "container is up but misconfigured" is diagnosable with one curl. The Docker
 // HEALTHCHECK probes it. Hosted mode returns a bare ok and no config detail.
 async function handleHealthRequest(): Promise<Response> {
-  if (isHostedAuthMode(env.AUTH_MODE)) {
+  if (isHostedAuthMode(getConfig("AUTH_MODE"))) {
     return Response.json({ status: "ok" });
   }
 

@@ -1,6 +1,6 @@
 import { isAuditRenderingAllowed } from "@/server/lib/audit/rendering-policy";
 import { createServerFn } from "@tanstack/react-start";
-import { waitUntil } from "cloudflare:workers";
+import { waitUntil } from "@/platform/runtime";
 import { requireOrgPermission } from "@/server/auth/org-gate";
 import { AuditService } from "@/server/features/audit/services/AuditService";
 import { captureServerEvent } from "@/server/lib/posthog";

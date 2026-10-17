@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { getConfigByName } from "@/platform/runtime";
 import {
   getContactNameParts,
   updateLoopsContact,
@@ -7,7 +7,7 @@ import {
 const LOOPS_TRANSACTIONAL_URL = "https://app.loops.so/api/v1/transactional";
 
 function getOptionalEnv(name: string) {
-  const value: unknown = Reflect.get(env, name);
+  const value: unknown = getConfigByName(name);
   const trimmed = typeof value === "string" ? value.trim() : "";
 
   return trimmed || null;

@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { getConfig } from "@/platform/runtime";
 import { and, eq, inArray, isNull, like } from "drizzle-orm";
 import { firstBy, identity } from "remeda";
 import { db } from "@/db";
@@ -51,7 +51,7 @@ async function mergeLegacyWorkspaces() {
   // mode the "delegated-%" orgs are either live (local_noauth resolves to
   // delegated-local-admin — merging would strand its data in a workspace that
   // mode never shows) or should not exist at all (hosted).
-  if (getAuthMode(env.AUTH_MODE) !== "cloudflare_access") {
+  if (getAuthMode(getConfig("AUTH_MODE")) !== "cloudflare_access") {
     throw new AppError(
       "FORBIDDEN",
       "Workspace merge is only available in cloudflare_access auth mode.",

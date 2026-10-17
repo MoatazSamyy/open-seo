@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { blobs } from "@/platform/runtime";
 import { z } from "zod";
 import { resolveUserContextFromHeaders } from "@/middleware/ensure-user/resolve";
 import { ProjectRepository } from "@/server/features/projects/repositories/ProjectRepository";
@@ -73,10 +73,8 @@ export async function exportAiData(input: AiExportInput, baseUrl: string) {
         ].join("\r\n");
   const id = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 3600_000).toISOString();
-  await env.R2.put(`ai-visibility/${input.projectId}/exports/${id}`, body, {
-    httpMetadata: {
-      contentType: input.format === "json" ? "application/json" : "text/csv",
-    },
+  await blobs.put(`ai-visibility/${input.projectId}/exports/${id}`, body, {
+    contentType: input.format === "json" ? "application/json" : "text/csv",
     customMetadata: { expiresAt, format: input.format },
   });
   const url = new URL("/api/ai-visibility/download", baseUrl);
@@ -113,12 +111,12 @@ export async function handleAiVisibilityDownload(
   if (!project) return new Response("Not found", { status: 404 });
   const id = z.string().uuid().safeParse(url.searchParams.get("exportId"));
   if (!id.success) return new Response("Not found", { status: 404 });
-  const object = await env.R2.get(
+  const object = await blobs.get(
     `ai-visibility/${projectId.data}/exports/${id.data}`,
   );
   if (!object) return new Response("Not found", { status: 404 });
   if (
-    !object.customMetadata?.expiresAt ||
+    !object.customMetadata.expiresAt ||
     object.customMetadata.expiresAt < new Date().toISOString()
   )
     return new Response("Export expired", { status: 410 });

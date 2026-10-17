@@ -1,5 +1,5 @@
 /* eslint-disable max-lines -- the org billing seam: customer lookup, credit gates, and credit holds with their settlement */
-import { env } from "cloudflare:workers";
+import { kv } from "@/platform/runtime";
 import type { EnsuredUserContext } from "@/middleware/ensure-user/types";
 import {
   AUTUMN_PAID_PLAN_FEATURE_ID,
@@ -35,7 +35,7 @@ export async function getOrCreateOrganizationCustomer(
 ): Promise<{ id: string }> {
   const cacheKey = customerEnsuredKey(context.organizationId);
   try {
-    if (await env.KV.get(cacheKey)) {
+    if (await kv.get(cacheKey)) {
       return { id: context.organizationId };
     }
   } catch (error) {
@@ -52,7 +52,7 @@ export async function getOrCreateOrganizationCustomer(
   }
 
   try {
-    await env.KV.put(cacheKey, "1", {
+    await kv.put(cacheKey, "1", {
       expirationTtl: CUSTOMER_ENSURED_TTL_SECONDS,
     });
   } catch (error) {

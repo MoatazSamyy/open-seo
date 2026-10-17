@@ -1,4 +1,4 @@
-import { waitUntil } from "cloudflare:workers";
+import { waitUntil } from "@/platform/runtime";
 import { z } from "zod";
 import { RankTrackingService } from "@/server/features/rank-tracking/services/RankTrackingService";
 import { AppError } from "@/server/lib/errors";

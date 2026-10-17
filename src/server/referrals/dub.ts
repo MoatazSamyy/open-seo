@@ -1,4 +1,4 @@
-import { env, waitUntil } from "cloudflare:workers";
+import { getConfigByName, kv, waitUntil } from "@/platform/runtime";
 import { parseCookies } from "better-auth/cookies";
 import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { autumn } from "@/server/billing/autumn";
@@ -41,9 +41,7 @@ const NOT_REFERRED_RETRY_TTL_SECONDS = 60 * 60;
 const SALE_SWEEP_WINDOW_MS = 45 * 24 * 60 * 60 * 1000;
 
 function getDubApiKey() {
-  const value: unknown = Reflect.get(env, "DUB_API_KEY");
-  const trimmed = typeof value === "string" ? value.trim() : "";
-  return trimmed || null;
+  return getConfigByName("DUB_API_KEY")?.trim() || null;
 }
 
 async function postDub(apiKey: string, path: string, body: unknown) {
@@ -72,7 +70,7 @@ export async function captureDubReferralSignup(
     const clickId = parseCookies(cookieHeader).get(DUB_COOKIE_NAME)?.trim();
     if (!clickId) return;
 
-    await env.KV.put(`${DUB_REFERRED_USER_KV_PREFIX}${userId}`, clickId, {
+    await kv.put(`${DUB_REFERRED_USER_KV_PREFIX}${userId}`, clickId, {
       expirationTtl: USER_PIN_TTL_SECONDS,
     });
 
@@ -124,14 +122,14 @@ export async function markDubReferredOrganization(userId: string) {
   if (!getDubApiKey()) return;
 
   try {
-    const clickId = await env.KV.get(`${DUB_REFERRED_USER_KV_PREFIX}${userId}`);
+    const clickId = await kv.get(`${DUB_REFERRED_USER_KV_PREFIX}${userId}`);
     if (!clickId) return;
 
     const organizationId =
       await AuthRepository.findFirstFoundedOrganizationIdForUser(userId);
     if (!organizationId) return;
 
-    await env.KV.put(`${DUB_REFERRED_ORG_KV_PREFIX}${organizationId}`, userId, {
+    await kv.put(`${DUB_REFERRED_ORG_KV_PREFIX}${organizationId}`, userId, {
       expirationTtl: ORG_PIN_TTL_SECONDS,
     });
   } catch (error) {
@@ -205,14 +203,14 @@ async function sweepDubSalesForOrganization(
     // One bad invoice must not abort the org's remaining invoices.
     try {
       const trackedKey = `${TRACKED_SALE_KV_PREFIX}${sale.invoiceId}`;
-      if (await env.KV.get(trackedKey)) continue;
+      if (await kv.get(trackedKey)) continue;
 
       const result = await trackDubSale(apiKey, userId, sale);
       // "failed" is left unmarked so the next webhook or cron sweep retries.
       if (result === "tracked") {
-        await env.KV.put(trackedKey, "1");
+        await kv.put(trackedKey, "1");
       } else if (result === "not_referred") {
-        await env.KV.put(trackedKey, "1", {
+        await kv.put(trackedKey, "1", {
           expirationTtl: NOT_REFERRED_RETRY_TTL_SECONDS,
         });
       }
@@ -232,7 +230,7 @@ export async function trackDubSalesForOrganization(organizationId: string) {
   try {
     if (!getDubApiKey()) return;
 
-    const userId = await env.KV.get(
+    const userId = await kv.get(
       `${DUB_REFERRED_ORG_KV_PREFIX}${organizationId}`,
     );
     if (!userId) return;
@@ -260,15 +258,15 @@ export async function sweepDubReferredOrganizations() {
 
   let cursor: string | undefined;
   do {
-    const page = await env.KV.list({
+    const page = await kv.list({
       prefix: DUB_REFERRED_ORG_KV_PREFIX,
       cursor,
     });
 
     for (const key of page.keys) {
-      const organizationId = key.name.slice(DUB_REFERRED_ORG_KV_PREFIX.length);
+      const organizationId = key.slice(DUB_REFERRED_ORG_KV_PREFIX.length);
       try {
-        const userId = await env.KV.get(key.name);
+        const userId = await kv.get(key);
         if (userId) {
           await sweepDubSalesForOrganization(organizationId, userId);
         }
@@ -284,6 +282,6 @@ export async function sweepDubReferredOrganizations() {
       }
     }
 
-    cursor = page.list_complete ? undefined : page.cursor;
+    cursor = page.cursor;
   } while (cursor);
 }

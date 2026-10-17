@@ -7,7 +7,7 @@
  * The KV entry auto-expires after 30 minutes — it's only needed while
  * the audit is running. Once finalized, we explicitly delete it.
  */
-import { env } from "cloudflare:workers";
+import { kv } from "@/platform/runtime";
 import { z } from "zod";
 import { jsonCodec } from "@/shared/json";
 
@@ -48,11 +48,11 @@ async function pushCrawledUrls(
   if (nextEntries.length === 0) return;
 
   const k = key(auditId);
-  const existing = await env.KV.get(k, "text");
+  const existing = await kv.get(k);
   const entries = parseCrawledEntries(existing);
   const merged = [...nextEntries, ...entries].slice(0, MAX_ENTRIES);
 
-  await env.KV.put(k, JSON.stringify(merged), {
+  await kv.put(k, JSON.stringify(merged), {
     expirationTtl: TTL_SECONDS,
   });
 }
@@ -62,7 +62,7 @@ async function pushCrawledUrls(
  * Returns newest-first.
  */
 async function getCrawledUrls(auditId: string): Promise<CrawledUrlEntry[]> {
-  const data = await env.KV.get(key(auditId), "text");
+  const data = await kv.get(key(auditId));
   return parseCrawledEntries(data);
 }
 
@@ -70,7 +70,7 @@ async function getCrawledUrls(auditId: string): Promise<CrawledUrlEntry[]> {
  * Delete the progress key (called after audit completes).
  */
 async function clear(auditId: string): Promise<void> {
-  await env.KV.delete(key(auditId));
+  await kv.delete(key(auditId));
 }
 
 export const AuditProgressKV = {

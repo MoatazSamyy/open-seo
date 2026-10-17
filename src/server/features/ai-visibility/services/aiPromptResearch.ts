@@ -1,4 +1,4 @@
-import { waitUntil } from "cloudflare:workers";
+import { waitUntil } from "@/platform/runtime";
 import { sortBy } from "remeda";
 import { getDomain } from "tldts";
 import { z } from "zod";

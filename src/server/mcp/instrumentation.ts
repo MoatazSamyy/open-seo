@@ -1,4 +1,4 @@
-import { waitUntil } from "cloudflare:workers";
+import { waitUntil } from "@/platform/runtime";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import type { z } from "zod";
 import { AppError, asAppError } from "@/server/lib/errors";

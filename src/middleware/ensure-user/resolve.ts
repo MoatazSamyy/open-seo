@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { getConfig } from "@/platform/runtime";
 import { getAuthMode, isSessionAuthMode } from "@/lib/auth-mode";
 import { resolveCloudflareAccessContext } from "./cloudflareAccess";
 import { resolveLocalNoAuthContext } from "./delegated";
@@ -11,7 +11,7 @@ import type { EnsuredUserContext } from "./types";
 export async function resolveUserContextFromHeaders(
   headers: Headers,
 ): Promise<EnsuredUserContext> {
-  const authMode = getAuthMode(env.AUTH_MODE);
+  const authMode = getAuthMode(getConfig("AUTH_MODE"));
   if (authMode === "local_noauth") {
     return resolveLocalNoAuthContext();
   }

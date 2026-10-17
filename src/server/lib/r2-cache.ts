@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { blobs } from "@/platform/runtime";
 import { sortBy } from "remeda";
 
 /**
@@ -39,10 +39,10 @@ export async function buildCacheKey(
  * drift between writes and reads is otherwise silent.
  */
 export async function getCached(key: string): Promise<unknown> {
-  const obj = await env.R2.get(`${CACHE_PREFIX}${key}`);
+  const obj = await blobs.get(`${CACHE_PREFIX}${key}`);
   if (!obj) return null;
 
-  const expiresAt = obj.customMetadata?.expiresAt;
+  const expiresAt = obj.customMetadata.expiresAt;
   if (expiresAt && Date.parse(expiresAt) < Date.now()) return null;
 
   try {
@@ -61,8 +61,8 @@ export async function setCached<T>(
   ttlSeconds: number,
   metadata: Record<string, string> = {},
 ): Promise<void> {
-  await env.R2.put(`${CACHE_PREFIX}${key}`, JSON.stringify(data), {
-    httpMetadata: { contentType: "application/json" },
+  await blobs.put(`${CACHE_PREFIX}${key}`, JSON.stringify(data), {
+    contentType: "application/json",
     customMetadata: {
       ...metadata,
       expiresAt: new Date(Date.now() + ttlSeconds * 1000).toISOString(),

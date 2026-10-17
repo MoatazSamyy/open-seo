@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { getConfig, getConfigByName } from "@/platform/runtime";
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { captcha } from "better-auth/plugins";
@@ -49,14 +49,14 @@ function createAuth() {
   // callbacks, /api/auth routes all use it). Other self-hosted modes only build
   // this instance to mint/refresh Search Console tokens, which never read
   // baseURL — so a placeholder is fine there.
-  const sessionMode = isSessionAuthMode(env.AUTH_MODE);
-  const passwordMode = isPasswordAuthMode(env.AUTH_MODE);
+  const sessionMode = isSessionAuthMode(getConfig("AUTH_MODE"));
+  const passwordMode = isPasswordAuthMode(getConfig("AUTH_MODE"));
   const baseUrl = sessionMode ? getHostedBaseUrl() : "http://localhost";
   // Password mode sends no email: sign-up is gated by ALLOWED_SIGNUP_EMAILS
   // instead of an inbox check, and there is no emailed password reset.
   const sendsEmail = !passwordMode;
   const bypassEmail =
-    !sendsEmail || Reflect.get(env, "BYPASS_EMAIL_VERIFICATION") === "true";
+    !sendsEmail || getConfigByName("BYPASS_EMAIL_VERIFICATION") === "true";
   const baseAuthConfig = createBaseAuthConfig(
     sessionMode
       ? {
@@ -130,7 +130,7 @@ function createAuth() {
   // silently omit the Better Auth captcha plugin. Hosted deployments that expose
   // the client widget without the matching server secret fail configuration
   // checks instead of presenting a bypassable captcha.
-  const turnstileSecretKey = getHostedTurnstileSecretKey(env);
+  const turnstileSecretKey = getHostedTurnstileSecretKey(turnstileEnv());
 
   const database =
     getDatabaseProvider() === "postgres"
@@ -209,7 +209,9 @@ function createAuth() {
     database,
     plugins: [
       ...baseAuthConfig.plugins,
-      ...(isHostedAuthMode(env.AUTH_MODE) ? [createApiKeyPlugin()] : []),
+      ...(isHostedAuthMode(getConfig("AUTH_MODE"))
+        ? [createApiKeyPlugin()]
+        : []),
       ...(turnstileSecretKey
         ? [
             captcha({
@@ -229,7 +231,7 @@ function createAuth() {
           // has no shared credit pool to protect, so it's left untouched.
           before: async (user) => {
             if (
-              isHostedAuthMode(env.AUTH_MODE) &&
+              isHostedAuthMode(getConfig("AUTH_MODE")) &&
               isDisposableEmailDomain(user.email)
             ) {
               throw new APIError("BAD_REQUEST", {
@@ -247,7 +249,7 @@ function createAuth() {
           after: async (user, ctx) => {
             if (passwordMode) return;
             await syncHostedSignupContact(user);
-            if (isHostedAuthMode(env.AUTH_MODE)) {
+            if (isHostedAuthMode(getConfig("AUTH_MODE"))) {
               await captureDubReferralSignup(user.id, ctx?.request);
             }
           },
@@ -304,6 +306,14 @@ function createAuth() {
 
 let authInstance: ReturnType<typeof createAuth> | null = null;
 
+function turnstileEnv() {
+  return {
+    AUTH_MODE: getConfig("AUTH_MODE"),
+    TURNSTILE_SECRET_KEY: getConfig("TURNSTILE_SECRET_KEY"),
+    TURNSTILE_SITE_KEY: getConfig("TURNSTILE_SITE_KEY"),
+  };
+}
+
 async function syncHostedSignupContact(user: {
   id: string;
   email: string;
@@ -340,7 +350,7 @@ function getTrustedOrigins(baseUrl: string) {
 }
 
 export function getHostedBaseUrl() {
-  const baseUrl = env.BETTER_AUTH_URL?.trim();
+  const baseUrl = getConfig("BETTER_AUTH_URL")?.trim();
 
   if (!baseUrl) {
     throw new Error("BETTER_AUTH_URL is required in hosted and password modes");
@@ -353,7 +363,7 @@ export function getHostedBaseUrl() {
 // enabled (it keys the OAuth-token encryption and is needed to build the auth
 // instance that mints/refreshes Search Console tokens).
 function getHostedSecret() {
-  const secret = env.BETTER_AUTH_SECRET?.trim();
+  const secret = getConfig("BETTER_AUTH_SECRET")?.trim();
 
   if (!secret) {
     throw new Error("BETTER_AUTH_SECRET is required");
@@ -372,7 +382,7 @@ function getSocialProviders() {
   // Analytics grants use (googleOAuth.ts) — so it must NOT require the
   // social-login config here, otherwise getAuth() construction would be coupled
   // to Google creds rather than just BETTER_AUTH_SECRET.
-  if (!isHostedAuthMode(env.AUTH_MODE)) {
+  if (!isHostedAuthMode(getConfig("AUTH_MODE"))) {
     return {};
   }
 
@@ -382,8 +392,8 @@ function getSocialProviders() {
 }
 
 function getGoogleSocialProviderConfig() {
-  const googleClientId = env.GOOGLE_CLIENT_ID?.trim();
-  const googleClientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
+  const googleClientId = getConfig("GOOGLE_CLIENT_ID")?.trim();
+  const googleClientSecret = getConfig("GOOGLE_CLIENT_SECRET")?.trim();
 
   if (!googleClientId) {
     throw new Error("GOOGLE_CLIENT_ID is required in hosted mode");
@@ -410,7 +420,7 @@ function hasHostedAuthEmailConfig() {
   ];
 
   return loopsVars.every((name) => {
-    const value: unknown = Reflect.get(env, name);
+    const value: unknown = getConfigByName(name);
     return typeof value === "string" && value.trim() !== "";
   });
 }
@@ -420,7 +430,7 @@ function hasHostedAuthEmailConfig() {
  * hosted's full set, or password mode's base URL and secret.
  */
 export function hasSessionAuthConfig() {
-  if (!isPasswordAuthMode(env.AUTH_MODE)) return hasHostedAuthConfig();
+  if (!isPasswordAuthMode(getConfig("AUTH_MODE"))) return hasHostedAuthConfig();
   try {
     getHostedBaseUrl();
     getHostedSecret();
@@ -436,8 +446,8 @@ function hasHostedAuthConfig() {
     getHostedSecret();
     getGoogleSocialProviderConfig();
     return (
-      hasHostedTurnstileConfig(env) &&
-      (Reflect.get(env, "BYPASS_EMAIL_VERIFICATION") === "true" ||
+      hasHostedTurnstileConfig(turnstileEnv()) &&
+      (getConfigByName("BYPASS_EMAIL_VERIFICATION") === "true" ||
         hasHostedAuthEmailConfig())
     );
   } catch {
