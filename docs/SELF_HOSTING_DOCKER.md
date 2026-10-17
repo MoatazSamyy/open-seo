@@ -2,7 +2,7 @@
 
 Run OpenSEO locally with Docker.
 
-In Docker mode, OpenSEO uses `AUTH_MODE=local_noauth` (no auth checks, local admin user `admin@localhost`). Only expose it behind your own auth-protected reverse proxy, tunnel, or private network.
+In Docker mode, OpenSEO uses `AUTH_MODE=local_noauth` (no auth checks, local admin user `admin@localhost`). Only expose it behind your own auth-protected reverse proxy, tunnel, or private network — or switch to `AUTH_MODE=password` for email/password sign-in (see [`SELF_HOSTING_LOGIN.md`](./SELF_HOSTING_LOGIN.md)).
 
 The default `compose.yaml` uses the published GHCR image:
 

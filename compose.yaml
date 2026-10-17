@@ -15,7 +15,11 @@ services:
       - CLOUDFLARE_INCLUDE_PROCESS_ENV=true
       - PORT=${PORT:-3001}
       - ALLOWED_HOST=${ALLOWED_HOST:-}
-      - AUTH_MODE=local_noauth
+      # local_noauth (default): no sign-in, single admin. Set AUTH_MODE=password
+      # in .env for email/password sign-in; see docs/SELF_HOSTING_LOGIN.md
+      - AUTH_MODE=${AUTH_MODE:-local_noauth}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-}
+      - ALLOWED_SIGNUP_EMAILS=${ALLOWED_SIGNUP_EMAILS:-}
       - OPENSEO_TELEMETRY_DISABLED=${OPENSEO_TELEMETRY_DISABLED:-}
       - DO_NOT_TRACK=${DO_NOT_TRACK:-}
       - DATAFORSEO_API_KEY=${DATAFORSEO_API_KEY}

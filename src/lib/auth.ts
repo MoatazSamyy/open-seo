@@ -11,7 +11,11 @@ import { pgDb } from "@/db/pg/client";
 import * as pgSchema from "@/db/pg/schema";
 import { getDatabaseProvider } from "@/db/provider";
 import { z } from "zod";
-import { isHostedAuthMode } from "@/lib/auth-mode";
+import {
+  isHostedAuthMode,
+  isPasswordAuthMode,
+  isSessionAuthMode,
+} from "@/lib/auth-mode";
 import { createApiKeyPlugin } from "@/lib/auth-api-key";
 import { createBaseAuthConfig } from "@/lib/auth-config";
 import {
@@ -19,6 +23,7 @@ import {
   hasHostedTurnstileConfig,
 } from "@/lib/auth-turnstile";
 import { resolveSignInHostedOrganization } from "@/server/auth/default-hosted-organization";
+import { assertPasswordSignupAllowed } from "@/server/auth/password-signup";
 import { onInvitationAccepted } from "@/server/auth/invited-member";
 import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { captureDubReferralSignup } from "@/server/referrals/dub";
@@ -40,15 +45,20 @@ const hostedBaseUrlSchema = z
   }, "BETTER_AUTH_URL must use https or localhost");
 
 function createAuth() {
-  // Hosted needs the real configured URL (cookies, callbacks, /api/auth routes
-  // all use it). Self-hosted only builds this instance to mint/refresh Search
-  // Console tokens, which never read baseURL — so a placeholder is fine there.
-  const baseUrl = isHostedAuthMode(env.AUTH_MODE)
-    ? getHostedBaseUrl()
-    : "http://localhost";
-  const bypassEmail = Reflect.get(env, "BYPASS_EMAIL_VERIFICATION") === "true";
+  // Sign-in modes (hosted, password) need the real configured URL (cookies,
+  // callbacks, /api/auth routes all use it). Other self-hosted modes only build
+  // this instance to mint/refresh Search Console tokens, which never read
+  // baseURL — so a placeholder is fine there.
+  const sessionMode = isSessionAuthMode(env.AUTH_MODE);
+  const passwordMode = isPasswordAuthMode(env.AUTH_MODE);
+  const baseUrl = sessionMode ? getHostedBaseUrl() : "http://localhost";
+  // Password mode sends no email: sign-up is gated by ALLOWED_SIGNUP_EMAILS
+  // instead of an inbox check, and there is no emailed password reset.
+  const sendsEmail = !passwordMode;
+  const bypassEmail =
+    !sendsEmail || Reflect.get(env, "BYPASS_EMAIL_VERIFICATION") === "true";
   const baseAuthConfig = createBaseAuthConfig(
-    isHostedAuthMode(env.AUTH_MODE)
+    sessionMode
       ? {
           organization: {
             // No sendInvitationEmail here on purpose: better-auth swallows a
@@ -165,12 +175,16 @@ function createAuth() {
       requireEmailVerification: !bypassEmail,
       resetPasswordTokenExpiresIn: 60 * 60,
       revokeSessionsOnPasswordReset: true,
-      sendResetPassword: async ({ user, url }) => {
-        await sendHostedPasswordResetEmail({
-          email: user.email,
-          resetUrl: url,
-        });
-      },
+      ...(sendsEmail
+        ? {
+            sendResetPassword: async ({ user, url }) => {
+              await sendHostedPasswordResetEmail({
+                email: user.email,
+                resetUrl: url,
+              });
+            },
+          }
+        : {}),
     },
     emailVerification: bypassEmail
       ? undefined
@@ -222,9 +236,16 @@ function createAuth() {
                 message: "Please sign up with a non-disposable email address.",
               });
             }
+            if (passwordMode) {
+              assertPasswordSignupAllowed(user.email);
+              // The allowlist is the trust check here, so the account counts
+              // as verified and the client's verify-email gate never fires.
+              return { data: { ...user, emailVerified: true } };
+            }
             return { data: user };
           },
           after: async (user, ctx) => {
+            if (passwordMode) return;
             await syncHostedSignupContact(user);
             if (isHostedAuthMode(env.AUTH_MODE)) {
               await captureDubReferralSignup(user.id, ctx?.request);
@@ -235,6 +256,9 @@ function createAuth() {
       session: {
         create: {
           before: async (session) => {
+            if (passwordMode) {
+              await joinSharedPasswordWorkspace(session.userId);
+            }
             // Runs on every sign-in (each sign-in mints a session row).
             // Resolution order: last-active org while still a member → most
             // recently joined org → newly created default organization —
@@ -259,6 +283,21 @@ function createAuth() {
       },
     },
   });
+
+  // Password mode runs one workspace per install so teammates share projects.
+  // Called from the session hook (Better Auth runs user-create "after" hooks
+  // only once the first session exists): a user with no membership joins the
+  // oldest workspace as an admin, so the org resolution below finds it instead
+  // of minting a new one. The very first account has nothing to join and gets
+  // the workspace created for it.
+  async function joinSharedPasswordWorkspace(userId: string) {
+    if (await AuthRepository.findFirstOrganizationIdForUser(userId)) return;
+    const organizationId = await AuthRepository.findOldestOrganizationId();
+    if (!organizationId) return;
+    await auth.api.addMember({
+      body: { userId, organizationId, role: "admin" },
+    });
+  }
 
   return auth;
 }
@@ -304,7 +343,7 @@ export function getHostedBaseUrl() {
   const baseUrl = env.BETTER_AUTH_URL?.trim();
 
   if (!baseUrl) {
-    throw new Error("BETTER_AUTH_URL is required in hosted mode");
+    throw new Error("BETTER_AUTH_URL is required in hosted and password modes");
   }
 
   return hostedBaseUrlSchema.parse(baseUrl);
@@ -376,7 +415,22 @@ function hasHostedAuthEmailConfig() {
   });
 }
 
-export function hasHostedAuthConfig() {
+/**
+ * Whether the configuration for the current sign-in mode is complete:
+ * hosted's full set, or password mode's base URL and secret.
+ */
+export function hasSessionAuthConfig() {
+  if (!isPasswordAuthMode(env.AUTH_MODE)) return hasHostedAuthConfig();
+  try {
+    getHostedBaseUrl();
+    getHostedSecret();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function hasHostedAuthConfig() {
   try {
     getHostedBaseUrl();
     getHostedSecret();

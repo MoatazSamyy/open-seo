@@ -28,7 +28,7 @@ declare namespace Cloudflare {
     // oxlint-disable-next-line typescript-eslint/consistent-type-imports
     AUDIT_ENGINE: Service<typeof import("./audit-worker").default>;
 
-    AUTH_MODE?: "cloudflare_access" | "local_noauth" | "hosted";
+    AUTH_MODE?: "cloudflare_access" | "local_noauth" | "hosted" | "password";
     BYPASS_EMAIL_VERIFICATION?: string;
     TEAM_DOMAIN?: string;
     POLICY_AUD?: string;
@@ -36,6 +36,9 @@ declare namespace Cloudflare {
     POSTHOG_HOST?: string;
     BETTER_AUTH_SECRET?: string;
     BETTER_AUTH_URL?: string;
+    // AUTH_MODE=password only: comma-separated emails and "@domain" entries
+    // allowed to create an account (src/server/auth/password-signup.ts).
+    ALLOWED_SIGNUP_EMAILS?: string;
     // Encrypts saved Shopify crawler signatures. Kept separate from
     // BETTER_AUTH_SECRET so the audit worker never holds the auth secret.
     CRAWLER_ACCESS_SECRET?: string;
@@ -97,7 +100,11 @@ declare namespace Cloudflare {
 }
 
 interface ImportMetaEnv {
-  readonly AUTH_MODE?: "cloudflare_access" | "local_noauth" | "hosted";
+  readonly AUTH_MODE?:
+    | "cloudflare_access"
+    | "local_noauth"
+    | "hosted"
+    | "password";
   readonly DATABASE_PROVIDER?: "d1" | "postgres";
   readonly BYPASS_EMAIL_VERIFICATION?: string;
   readonly POSTHOG_PUBLIC_KEY?: string;

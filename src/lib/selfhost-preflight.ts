@@ -78,6 +78,39 @@ function checkAuthMode(env: EnvRecord, items: PreflightItem[]): void {
     return;
   }
 
+  if (mode === "password") {
+    const missing = [
+      "BETTER_AUTH_URL",
+      "BETTER_AUTH_SECRET",
+      "ALLOWED_SIGNUP_EMAILS",
+    ].filter((name) => !get(env, name));
+    const secret = get(env, "BETTER_AUTH_SECRET");
+    items.push(
+      missing.length
+        ? {
+            key: "auth",
+            name: "AUTH_MODE",
+            level: "fail",
+            message: `password mode requires ${missing.join(", ")}. See docs/SELF_HOSTING_LOGIN.md.`,
+          }
+        : secret && secret.length < MIN_BETTER_AUTH_SECRET_LENGTH
+          ? {
+              key: "auth",
+              name: "BETTER_AUTH_SECRET",
+              level: "fail",
+              message: `BETTER_AUTH_SECRET must be at least ${MIN_BETTER_AUTH_SECRET_LENGTH} characters in password mode.`,
+            }
+          : {
+              key: "auth",
+              name: "AUTH_MODE",
+              level: "ok",
+              message:
+                "password — email/password sign-in, sign-up limited to ALLOWED_SIGNUP_EMAILS.",
+            },
+    );
+    return;
+  }
+
   // cloudflare_access (explicit or defaulted)
   const teamDomain = get(env, "TEAM_DOMAIN");
   const policyAud = get(env, "POLICY_AUD");

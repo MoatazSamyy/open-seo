@@ -43,9 +43,11 @@ the other configured provider, and a failed provider goes last for a minute.
 
 ## Milestone 2 — Real login for self-hosting
 
-Docker self-hosting runs with `AUTH_MODE=local_noauth`. Add a self-host mode
-that uses the existing better-auth email/password flow, without the hosted
-billing and email-verification dependencies.
+Done. See
+[`specs/0019-self-host-password-login.md`](./specs/0019-self-host-password-login.md).
+`AUTH_MODE=password` adds email/password sign-in with sign-up limited to
+`ALLOWED_SIGNUP_EMAILS` and one shared workspace per install, without the
+hosted billing, captcha, or email. Follow-up: serve MCP in password mode.
 
 ## Milestone 3 — Run without Cloudflare emulation
 

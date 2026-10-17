@@ -2,6 +2,7 @@ import { Link, Outlet, createFileRoute } from "@tanstack/react-router";
 import { AuthPageCard, AuthPageShell } from "@/client/features/auth/AuthPage";
 import { useHostedAuthRouteGuard } from "@/client/features/auth/useHostedAuthRouteGuard";
 import { PageLoading } from "@/client/components/Spinner";
+import { isHostedClientAuthMode } from "@/lib/auth-mode";
 import { Button } from "@/client/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -11,8 +12,9 @@ export const Route = createFileRoute("/_authenticated")({
 function AuthenticatedShellLayout() {
   const authGate = useHostedAuthRouteGuard();
 
-  // Every page under this layout is hosted-only.
-  if (!authGate.isHostedMode) {
+  // Every page under this layout is hosted-only (onboarding, plans, MCP
+  // OAuth consent), including in password mode.
+  if (!isHostedClientAuthMode()) {
     return (
       <AuthPageShell>
         <AuthPageCard

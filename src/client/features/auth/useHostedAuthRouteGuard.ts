@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useSession } from "@/lib/auth-client";
 import {
   isEmailVerificationBypassed,
-  isHostedClientAuthMode,
+  isSessionClientAuthMode,
 } from "@/lib/auth-mode";
 import {
   getCurrentAuthRedirectFromHref,
@@ -14,12 +14,13 @@ import {
 export function useHostedAuthRouteGuard() {
   const navigate = useNavigate();
   const { data: session, isPending } = useSession();
-  const isHostedMode = isHostedClientAuthMode();
+  // Any sign-in mode (hosted or password); the gate is the same session.
+  const isSessionMode = isSessionClientAuthMode();
   const emailVerified =
     session?.user?.emailVerified === true || isEmailVerificationBypassed();
 
   useEffect(() => {
-    if (isPending || !isHostedMode) {
+    if (isPending || !isSessionMode) {
       return;
     }
 
@@ -43,7 +44,7 @@ export function useHostedAuthRouteGuard() {
     }
   }, [
     isPending,
-    isHostedMode,
+    isSessionMode,
     emailVerified,
     session?.user?.email,
     session?.user?.id,
@@ -54,7 +55,7 @@ export function useHostedAuthRouteGuard() {
     !isPending && Boolean(session?.user?.id) && emailVerified;
 
   return {
-    isHostedMode,
-    canRenderAuthenticatedContent: !isHostedMode || hasVerifiedHostedSession,
+    isSessionMode,
+    canRenderAuthenticatedContent: !isSessionMode || hasVerifiedHostedSession,
   };
 }

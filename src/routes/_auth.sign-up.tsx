@@ -46,14 +46,17 @@ export const Route = createFileRoute("/_auth/sign-up")({
 function SignUpPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const { redirectTo, isHostedMode } = useAuthPageState(search.redirect);
+  const { redirectTo, isHostedMode, isPasswordMode } = useAuthPageState(
+    search.redirect,
+  );
   const postSignupRedirect =
     redirectTo !== "/"
       ? redirectTo
       : search.domain
         ? `/onboarding?${new URLSearchParams({ domain: search.domain }).toString()}`
         : "/onboarding";
-  const [showEmailForm, setShowEmailForm] = useState(false);
+  // Password mode has only the email form, so skip the method chooser.
+  const [showEmailForm, setShowEmailForm] = useState(isPasswordMode);
   const google = useGoogleAuth({ redirectTo, postSignupRedirect });
 
   // Turnstile is active only in hosted mode with a configured site key.
@@ -119,6 +122,12 @@ function SignUpPage() {
         captureClientEvent("auth:sign_up_success", {
           redirect_to: redirectTo,
         });
+        // Password mode signs the new account straight in (no inbox check),
+        // and onboarding is a hosted-only page.
+        if (isPasswordMode) {
+          void navigate({ href: redirectTo, replace: true });
+          return;
+        }
         void navigate({
           to: "/verify-email",
           search: getVerifyEmailSearch(email, postSignupRedirect),
@@ -140,7 +149,18 @@ function SignUpPage() {
     <AuthPageCard
       title="Create your account"
       footer={
-        isHostedMode ? (
+        isPasswordMode ? (
+          <p className="text-sm text-foreground/50">
+            Already have an account?{" "}
+            <Link
+              to="/sign-in"
+              search={getSignInSearch(redirectTo)}
+              className="text-foreground underline underline-offset-2 hover:text-foreground/80 transition-colors"
+            >
+              Sign in
+            </Link>
+          </p>
+        ) : isHostedMode ? (
           showEmailForm ? (
             <button
               type="button"

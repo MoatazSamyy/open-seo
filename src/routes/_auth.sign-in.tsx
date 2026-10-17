@@ -34,10 +34,12 @@ export const Route = createFileRoute("/_auth/sign-in")({
 function SignInPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const { redirectTo, oauthQuery, isHostedMode } = useAuthPageState(
-    search.redirect,
-  );
-  const [showEmailForm, setShowEmailForm] = useState(false);
+  const { redirectTo, oauthQuery, isHostedMode, isPasswordMode } =
+    useAuthPageState(search.redirect);
+  // Password mode has only the email form, so skip the method chooser.
+  const [showEmailForm, setShowEmailForm] = useState(isPasswordMode);
+  // Password reset is an emailed link, which password mode can't send.
+  const showForgotPassword = isHostedMode && showEmailForm;
   const google = useGoogleAuth({ redirectTo });
 
   const form = useAppForm({
@@ -104,15 +106,15 @@ function SignInPage() {
     <AuthPageCard
       title="Sign in"
       footer={
-        isHostedMode ? (
+        isHostedMode || isPasswordMode ? (
           <div
             className={
-              showEmailForm
+              showForgotPassword
                 ? "flex w-full justify-between text-sm text-foreground/50"
                 : "w-full text-sm text-foreground/50"
             }
           >
-            {showEmailForm ? (
+            {showForgotPassword ? (
               <Link
                 to="/forgot-password"
                 search={getSignInSearch(redirectTo)}

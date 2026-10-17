@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/client/components/ui/card";
-import { isHostedClientAuthMode } from "@/lib/auth-mode";
+import { isSessionClientAuthMode } from "@/lib/auth-mode";
 import { getSignInHref, getSignInHrefForLocation } from "@/lib/auth-redirect";
 
 const CLOUDFLARE_SETUP_GUIDE_URL =
@@ -116,7 +116,8 @@ function AuthConfigErrorCard({ message, onRetry }: CardProps) {
 }
 
 function UnauthenticatedErrorCard({ message, onRetry }: CardProps) {
-  const isHostedMode = isHostedClientAuthMode();
+  // Hosted and password mode both sign in at /sign-in.
+  const isHostedMode = isSessionClientAuthMode();
   const signInHref =
     typeof window === "undefined"
       ? getSignInHref("/")

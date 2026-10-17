@@ -244,6 +244,18 @@ async function listMembershipsForUser(userId: string) {
     .orderBy(asc(member.createdAt));
 }
 
+// The install's shared workspace in AUTH_MODE=password: the first one created,
+// by the first account. Later accounts join it instead of getting their own.
+async function findOldestOrganizationId() {
+  const [oldest] = await db
+    .select({ id: organization.id })
+    .from(organization)
+    .orderBy(asc(organization.createdAt))
+    .limit(1);
+
+  return oldest?.id ?? null;
+}
+
 // Case-insensitive on purpose: better-auth lowercases the address when it
 // mails an invite, but the stored row keeps whatever the inviter typed.
 async function hasPendingInvitationForEmail(email: string) {
@@ -295,4 +307,5 @@ export const AuthRepository = {
   getHostedUser,
   getHostedUserNames,
   hasPendingInvitationForEmail,
+  findOldestOrganizationId,
 } as const;

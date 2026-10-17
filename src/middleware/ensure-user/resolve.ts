@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { getAuthMode, isHostedAuthMode } from "@/lib/auth-mode";
+import { getAuthMode, isSessionAuthMode } from "@/lib/auth-mode";
 import { resolveCloudflareAccessContext } from "./cloudflareAccess";
 import { resolveLocalNoAuthContext } from "./delegated";
 import { resolveHostedContext } from "./hosted";
@@ -15,7 +15,8 @@ export async function resolveUserContextFromHeaders(
   if (authMode === "local_noauth") {
     return resolveLocalNoAuthContext();
   }
-  if (isHostedAuthMode(authMode)) {
+  // Hosted and self-hosted password sign-in share Better Auth sessions.
+  if (isSessionAuthMode(authMode)) {
     return resolveHostedContext(headers);
   }
   return resolveCloudflareAccessContext(headers);

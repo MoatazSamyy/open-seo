@@ -35,6 +35,10 @@ describe("runSelfhostPreflight", () => {
       { AUTH_MODE: "hosted", BETTER_AUTH_SECRET: "x".repeat(40) },
       ["BETTER_AUTH_URL", "GOOGLE_CLIENT_ID"],
     ],
+    [
+      { AUTH_MODE: "password", BETTER_AUTH_SECRET: "x".repeat(40) },
+      ["BETTER_AUTH_URL", "ALLOWED_SIGNUP_EMAILS"],
+    ],
   ])("fails %o listing every missing variable", (env, mentions) => {
     const result = runSelfhostPreflight(env);
 

@@ -4,7 +4,10 @@ import {
   getCurrentAuthRedirect,
   getOAuthSignedQuery,
 } from "@/lib/auth-redirect";
-import { isHostedClientAuthMode } from "@/lib/auth-mode";
+import {
+  isHostedClientAuthMode,
+  isPasswordClientAuthMode,
+} from "@/lib/auth-mode";
 
 export const authRedirectSearchSchema = z.object({
   redirect: z.string().optional(),
@@ -24,11 +27,14 @@ export function useAuthPageState(redirect: string | undefined) {
       ? getOAuthSignedQuery(window.location.search)
       : null;
   const isHostedMode = isHostedClientAuthMode();
+  // Self-hosted email/password sign-in: no Google, captcha, or email flows.
+  const isPasswordMode = isPasswordClientAuthMode();
 
   return {
     redirectTo,
     oauthQuery,
     isHostedMode,
+    isPasswordMode,
   };
 }
 

@@ -4,6 +4,10 @@ export const AUTH_MODES = [
   "cloudflare_access",
   "local_noauth",
   "hosted",
+  // Self-hosted email/password sign-in: hosted's Better Auth sessions without
+  // its billing, captcha, Google sign-in, or email. See
+  // docs/maintainers/specs/0019-self-host-password-login.md.
+  "password",
 ] as const;
 
 type AuthMode = (typeof AUTH_MODES)[number];
@@ -29,8 +33,22 @@ export function getAuthMode(value: string | null | undefined): AuthMode {
   return "cloudflare_access";
 }
 
+/**
+ * The hosted product: billing, credit metering, captcha, Google sign-in and
+ * email. Not a login check; use isSessionAuthMode for that.
+ */
 export function isHostedAuthMode(value: string | null | undefined) {
   return getAuthMode(value) === "hosted";
+}
+
+export function isPasswordAuthMode(value: string | null | undefined) {
+  return getAuthMode(value) === "password";
+}
+
+/** Users sign in to OpenSEO itself (Better Auth sessions): hosted or password. */
+export function isSessionAuthMode(value: string | null | undefined) {
+  const mode = getAuthMode(value);
+  return mode === "hosted" || mode === "password";
 }
 
 export function isHostedClientAuthMode() {
@@ -40,6 +58,15 @@ export function isHostedClientAuthMode() {
   // backend which auth UI to render. Hosted deployments must therefore set
   // AUTH_MODE=hosted in both the client build environment and the runtime.
   return isHostedAuthMode(import.meta.env.AUTH_MODE);
+}
+
+// Same build-time AUTH_MODE contract as isHostedClientAuthMode.
+export function isSessionClientAuthMode() {
+  return isSessionAuthMode(import.meta.env.AUTH_MODE);
+}
+
+export function isPasswordClientAuthMode() {
+  return isPasswordAuthMode(import.meta.env.AUTH_MODE);
 }
 
 export function isEmailVerificationBypassed() {

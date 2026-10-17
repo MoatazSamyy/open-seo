@@ -27,6 +27,7 @@ import {
 import { ThemePreferenceRadio } from "@/client/components/ThemePreferenceMenuItems";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { signOutAndRedirect, useSession } from "@/lib/auth-client";
+import { isHostedClientAuthMode } from "@/lib/auth-mode";
 import { BILLING_ROUTE } from "@/shared/billing";
 import {
   Sidebar as UiSidebar,
@@ -292,17 +293,19 @@ function AccountFooter({ ready }: { ready: boolean }) {
                   <Settings className="size-4" />
                   Settings
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  render={
-                    <Link
-                      to={BILLING_ROUTE}
-                      onClick={() => setOpenMobile(false)}
-                    />
-                  }
-                >
-                  <CreditCard className="size-4" />
-                  Billing
-                </DropdownMenuItem>
+                {isHostedClientAuthMode() ? (
+                  <DropdownMenuItem
+                    render={
+                      <Link
+                        to={BILLING_ROUTE}
+                        onClick={() => setOpenMobile(false)}
+                      />
+                    }
+                  >
+                    <CreditCard className="size-4" />
+                    Billing
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>Theme</DropdownMenuLabel>
                   <div className="px-1 pb-1">
