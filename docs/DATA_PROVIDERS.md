@@ -72,6 +72,26 @@ Differences you'll notice:
 - **Country only.** Keywords Everywhere has no language or city targeting.
   OpenSEO checks its country list and keeps everything else on DataForSEO.
 
+## Automatic failover
+
+If you set API keys for both providers of the same data, OpenSEO uses the
+second one as a backup. When the main provider is down, rate-limits you, or
+(for DataForSEO) rejects your login, the same request is retried once on the
+other one.
+
+| Data                          | Main provider                                      | Backup                                                 |
+| ----------------------------- | -------------------------------------------------- | ------------------------------------------------------ |
+| Desktop SERPs                 | `SERP_PROVIDER` (DataForSEO by default)            | The other, if its key is set                           |
+| Country-level keyword metrics | `KEYWORD_METRICS_PROVIDER` (DataForSEO by default) | The other, if its key is set and it covers the country |
+
+So setting only `SERPER_API_KEY` (without `SERP_PROVIDER`) keeps DataForSEO
+as the main SERP provider and adds Serper as its backup. The same goes for
+`KEYWORDS_EVERYWHERE_API_KEY`.
+
+After a provider fails, OpenSEO tries the other one first for the next
+minute. Each failover is logged as a `provider-failover:` warning. Mobile
+SERPs, local keyword metrics, and everything else have no backup.
+
 ## Costs and misconfiguration
 
 Cost estimates in the app use DataForSEO prices. Serper and Keywords

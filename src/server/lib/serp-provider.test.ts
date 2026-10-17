@@ -9,6 +9,9 @@ vi.mock("@/server/lib/runtime-env", () => ({
 
 import { fetchRoutedLiveSerp } from "@/server/lib/serp-provider";
 
+// Failover puts a failed provider last for a minute (per module), so the
+// failover tests run last in this file.
+
 const DATAFORSEO_EMPTY_SERP = {
   status_code: 20000,
   tasks: [
@@ -68,5 +71,52 @@ describe("SERP provider routing", () => {
     await fetchRoutedLiveSerp(query);
 
     expect(calledHost(fetchMock)).toBe("api.dataforseo.com");
+  });
+
+  it("falls over to Serper when DataForSEO is down", async () => {
+    delete env.values.SERP_PROVIDER;
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async (input) =>
+        requestUrl(input).includes("serper.dev")
+          ? Response.json({
+              organic: [{ title: "A", link: "https://a.com/" }],
+              credits: 1,
+            })
+          : new Response("down", { status: 503 }),
+      ),
+    );
+
+    const result = await fetchRoutedLiveSerp(query);
+
+    expect(result.data).toEqual([
+      expect.objectContaining({ domain: "a.com", rank_group: 1 }),
+    ]);
+  });
+
+  it("charges a failed provider's billed pages on the answer", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    let serperPage = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async (input) => {
+        if (!requestUrl(input).includes("serper.dev")) {
+          return Response.json(DATAFORSEO_EMPTY_SERP);
+        }
+        serperPage += 1;
+        return serperPage === 1
+          ? Response.json({
+              organic: [{ title: "A", link: "https://a.com/" }],
+              credits: 1,
+            })
+          : new Response("down", { status: 503 });
+      }),
+    );
+
+    // Serper bills page 1, fails on page 2, and DataForSEO answers.
+    const result = await fetchRoutedLiveSerp({ ...query, depth: 20 });
+
+    expect(result.billing.costUsd).toBeCloseTo(0.001 + 0.002);
   });
 });

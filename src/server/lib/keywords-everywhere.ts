@@ -124,31 +124,38 @@ async function getSupportedCountries(): Promise<Set<string>> {
 }
 
 /**
- * The Keywords Everywhere country to use for a location, or null when keyword
- * metrics for it should come from DataForSEO: the operator didn't pick
- * Keywords Everywhere, its key is missing, it doesn't cover the country, or
- * its country list can't be read.
+ * Whether the operator made Keywords Everywhere the primary keyword metrics
+ * provider. An unknown value or a missing key keeps DataForSEO primary.
  */
-export async function resolveKeywordsEverywhereCountry(
-  locationCode: number,
-): Promise<string | null> {
+export async function isKeywordsEverywherePrimary(): Promise<boolean> {
   const provider = (await getOptionalEnvValue("KEYWORD_METRICS_PROVIDER"))
     ?.trim()
     .toLowerCase();
-  if (!provider || provider === "dataforseo") return null;
+  if (!provider || provider === "dataforseo") return false;
   if (provider !== "keywords_everywhere") {
     console.warn(
       `keyword-metrics: unknown KEYWORD_METRICS_PROVIDER "${provider}"; using DataForSEO`,
     );
-    return null;
+    return false;
   }
   if (!(await getOptionalEnvValue("KEYWORDS_EVERYWHERE_API_KEY"))) {
     console.warn(
       "keyword-metrics: KEYWORD_METRICS_PROVIDER=keywords_everywhere but KEYWORDS_EVERYWHERE_API_KEY is not set; using DataForSEO",
     );
-    return null;
+    return false;
   }
+  return true;
+}
 
+/**
+ * The Keywords Everywhere country for a location, or null when Keywords
+ * Everywhere can't serve it at all: no key, the country isn't covered, or its
+ * country list can't be read. Primary or failover, it's the same check.
+ */
+export async function getKeywordsEverywhereCountry(
+  locationCode: number,
+): Promise<string | null> {
+  if (!(await getOptionalEnvValue("KEYWORDS_EVERYWHERE_API_KEY"))) return null;
   const iso = getIsoCountryCode(locationCode);
   // Keywords Everywhere uses "uk" for the United Kingdom, not ISO's "gb".
   const country = iso === "gb" ? "uk" : iso;
@@ -156,7 +163,7 @@ export async function resolveKeywordsEverywhereCountry(
     return (await getSupportedCountries()).has(country) ? country : null;
   } catch (error) {
     console.warn(
-      "keyword-metrics: Keywords Everywhere country list unavailable; using DataForSEO",
+      "keyword-metrics: Keywords Everywhere country list unavailable; using DataForSEO only",
       error,
     );
     return null;

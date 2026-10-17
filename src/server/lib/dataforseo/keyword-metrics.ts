@@ -5,10 +5,12 @@ import {
 } from "@/server/lib/dataforseo/google-ads";
 import type { KeywordOverviewItem } from "@/server/lib/dataforseo/labs";
 import {
+  getKeywordsEverywhereCountry,
+  isKeywordsEverywherePrimary,
   KEYWORDS_EVERYWHERE_BATCH_SIZE,
-  resolveKeywordsEverywhereCountry,
   type KeywordsEverywhereItem,
 } from "@/server/lib/keywords-everywhere";
+import { runWithFailover } from "@/server/lib/provider-failover";
 import type { CreditFeature } from "@/shared/billing-credit-features";
 import { getKeywordDataProvider } from "@/shared/keyword-locations";
 import type { MonthlySearch } from "@/types/keywords";
@@ -184,13 +186,55 @@ async function fetchKeywordsEverywhereMetrics(
   return rows;
 }
 
+type KeywordMetricsParams = {
+  keywords: string[];
+  locationCode: number;
+  languageCode: string;
+  creditFeature: CreditFeature;
+  includeClickstreamData?: boolean;
+  locationName?: string;
+};
+
 // Hydrate a keyword list with fresh metrics: route by location (Labs vs Google
 // Ads), batch under the per-call cap, and drop items DataForSEO returns without
 // a keyword. `creditFeature` is required so spend is always attributed.
 //
-// When the operator picks Keywords Everywhere (KEYWORD_METRICS_PROVIDER), it
-// serves country-level requests for the countries it covers, with no keyword
-// difficulty or intent. Local requests and other countries stay on DataForSEO.
+// Keywords Everywhere can serve country-level requests for the countries it
+// covers, with no keyword difficulty or intent: as the primary provider when
+// KEYWORD_METRICS_PROVIDER picks it, and as the failover for DataForSEO
+// whenever its key is set (and the reverse). Local requests and other
+// countries are DataForSEO only.
+export async function fetchKeywordMetricsForList(
+  client: KeywordMetricsClient,
+  params: KeywordMetricsParams,
+): Promise<KeywordMetricRow[]> {
+  const fromDataforseo = () => fetchDataforseoKeywordMetrics(client, params);
+  const country = params.locationName
+    ? null
+    : await getKeywordsEverywhereCountry(params.locationCode);
+  if (!country) return fromDataforseo();
+
+  const dataforseo = { provider: "dataforseo" as const, run: fromDataforseo };
+  const keywordsEverywhere = {
+    provider: "keywords_everywhere" as const,
+    run: () =>
+      fetchKeywordsEverywhereMetrics(
+        client,
+        params.keywords,
+        country,
+        params.creditFeature,
+      ),
+  };
+  return runWithFailover(
+    "keyword-metrics",
+    (await isKeywordsEverywherePrimary())
+      ? [keywordsEverywhere, dataforseo]
+      : [dataforseo, keywordsEverywhere],
+  );
+}
+
+// DataForSEO metrics, routed by location: Labs, or Google Ads for countries
+// Labs doesn't cover.
 //
 // `locationName` (canonical DataForSEO string, e.g. a city) scopes volume /
 // CPC / competition to that location via Google Ads — the only source that
@@ -199,29 +243,10 @@ async function fetchKeywordsEverywhereMetrics(
 // national KD / intent from Labs. National volume is never silently shown for
 // a local request — keywords Google Ads doesn't return keep KD / intent but
 // null volume / CPC.
-export async function fetchKeywordMetricsForList(
+async function fetchDataforseoKeywordMetrics(
   client: KeywordMetricsClient,
-  params: {
-    keywords: string[];
-    locationCode: number;
-    languageCode: string;
-    creditFeature: CreditFeature;
-    includeClickstreamData?: boolean;
-    locationName?: string;
-  },
+  params: KeywordMetricsParams,
 ): Promise<KeywordMetricRow[]> {
-  const keywordsEverywhereCountry = params.locationName
-    ? null
-    : await resolveKeywordsEverywhereCountry(params.locationCode);
-  if (keywordsEverywhereCountry) {
-    return fetchKeywordsEverywhereMetrics(
-      client,
-      params.keywords,
-      keywordsEverywhereCountry,
-      params.creditFeature,
-    );
-  }
-
   const useGoogleAds =
     getKeywordDataProvider(params.locationCode) === "google_ads";
   const rows: KeywordMetricRow[] = [];

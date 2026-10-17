@@ -10,12 +10,12 @@ Every SEO data call goes to DataForSEO today. The goal is that each kind of
 data has a provider seam, so a second vendor can serve it and one vendor's
 outage or price change doesn't take the product down.
 
-| Step | Data                                  | Alternative provider | Status      |
-| ---- | ------------------------------------- | -------------------- | ----------- |
-| 1a   | Live organic SERPs + live rank checks | Serper.dev           | Done        |
-| 1b   | Keyword metrics (volume, CPC)         | Keywords Everywhere  | In progress |
-| 1c   | Backlinks summary                     | To be chosen         | Planned     |
-| 1d   | Provider health + failover            | —                    | Planned     |
+| Step | Data                                  | Alternative provider | Status   |
+| ---- | ------------------------------------- | -------------------- | -------- |
+| 1a   | Live organic SERPs + live rank checks | Serper.dev           | Done     |
+| 1b   | Keyword metrics (volume, CPC)         | Keywords Everywhere  | Done     |
+| 1c   | Backlinks summary                     | None fits yet        | Deferred |
+| 1d   | Provider health + failover            | —                    | Done     |
 
 **1a — SERP provider routing.** See
 [`specs/0016-serp-provider-routing.md`](./specs/0016-serp-provider-routing.md).
@@ -30,11 +30,16 @@ CPC, competition, and trend from Keywords Everywhere. Difficulty and intent
 stay Labs-only and are null for those rows. It costs more per keyword than
 Labs, so it's a redundancy option that milestone 1d turns into a fallback.
 
-**1c — Backlinks seam.** Same pattern for the backlinks summary (referring
-domains, backlinks, rank). Lists of individual links stay on DataForSEO.
+**1c — Backlinks (deferred).** The backlinks pages need totals, rank, spam
+scores, new/lost status, history, and filtered, sorted link lists. Keywords
+Everywhere only returns raw link lists, and Moz only returns totals, so
+neither can stand in for DataForSEO without breaking those pages. Revisit if
+a provider with both appears, or as a Moz-backed summary card.
 
-**1d — Failover.** When the primary provider returns an upstream error,
-retry once on the other configured provider and record which one answered.
+**1d — Failover.** See
+[`specs/0018-provider-failover.md`](./specs/0018-provider-failover.md).
+When the primary provider fails on its own side, the request retries once on
+the other configured provider, and a failed provider goes last for a minute.
 
 ## Milestone 2 — Real login for self-hosting
 

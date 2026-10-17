@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AppError } from "@/server/lib/errors";
 import { fetchKeywordMetricsForList } from "./keyword-metrics";
 
 type Client = Parameters<typeof fetchKeywordMetricsForList>[0];
@@ -313,5 +314,30 @@ describe("fetchKeywordMetricsForList with Keywords Everywhere", () => {
 
     expect(keywordData).not.toHaveBeenCalled();
     expect(keywordOverview).toHaveBeenCalledTimes(2);
+  });
+
+  // Last in the file: the failover puts DataForSEO last for a minute.
+  it("falls over to Keywords Everywhere when DataForSEO is down", async () => {
+    vi.stubEnv("KEYWORD_METRICS_PROVIDER", "");
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const keywordOverview = vi
+      .fn()
+      .mockRejectedValue(new AppError("UPSTREAM_UNAVAILABLE"));
+    const keywordData = vi
+      .fn()
+      .mockResolvedValue([{ keyword: "best crm", vol: 1000, trend: [] }]);
+    const client = fakeClient({ keywordOverview, keywordData });
+
+    const rows = await fetchKeywordMetricsForList(client, {
+      keywords: ["best crm"],
+      locationCode: 2840,
+      languageCode: "en",
+      creditFeature: "keyword_research",
+    });
+
+    expect(keywordOverview).toHaveBeenCalledTimes(1);
+    expect(rows).toEqual([
+      expect.objectContaining({ keyword: "best crm", searchVolume: 1000 }),
+    ]);
   });
 });
