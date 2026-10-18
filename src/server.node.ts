@@ -11,12 +11,32 @@ import { AiVisibilityWorkflow } from "@/server/workflows/AiVisibilityWorkflow";
 import { RankCheckWorkflow } from "@/server/workflows/RankCheckWorkflow";
 import { SiteAuditWorkflow } from "@/server/workflows/SiteAuditWorkflow";
 import { startWorkflowRunner } from "@/platform/node/workflow-runner";
+import { registerBinding } from "@/platform/node/cloudflare-workers";
+import { createDurableObjectNamespace } from "@/platform/node/durable-objects";
+import { AuditScratchpad } from "@/server/features/audit/AuditScratchpad";
+import AuditEngine from "@/audit-worker";
 
 // Server entry for the Node runtime (fork milestone 3c; built by
 // vite.node.config.ts, served by scripts/node-server.mjs). The Workers entry
-// is src/server.ts. Workflows run on the Postgres runner (3d). Not here yet:
-// site-audit crawl state (3e), SAM chat (3f), the operator GDPR erasure
-// endpoint (needs Durable Object bindings), and hosted mode.
+// is src/server.ts. Workflows run on the Postgres runner (3d); site audits'
+// crawl scratchpad and audit engine run in this process (3e). Not here yet:
+// SAM chat (3f), the operator GDPR erasure endpoint, and hosted mode.
+
+const nodeExecutionContext = {
+  waitUntil,
+  passThroughOnException: () => undefined,
+  props: {},
+};
+
+// Bindings the site-audit workflow reaches through cloudflare:workers, which
+// on Cloudflare live in the separate audit worker (src/audit-worker.ts).
+const auditScratchpads = createDurableObjectNamespace(
+  "AUDIT_SCRATCHPAD",
+  AuditScratchpad,
+  env,
+);
+registerBinding("AUDIT_SCRATCHPAD", auditScratchpads);
+registerBinding("AUDIT_ENGINE", new AuditEngine(nodeExecutionContext, env));
 
 async function handleRequest(request: Request): Promise<Response> {
   const authMode = getAuthMode(env.AUTH_MODE);
@@ -51,11 +71,12 @@ async function handleRequest(request: Request): Promise<Response> {
   ) {
     const { handleSelfHostedOpenSeoMcpRequest } =
       await import("@/server/mcp/transport");
-    return handleSelfHostedOpenSeoMcpRequest(publicRequest, authMode, env, {
-      waitUntil,
-      passThroughOnException: () => undefined,
-      props: {},
-    });
+    return handleSelfHostedOpenSeoMcpRequest(
+      publicRequest,
+      authMode,
+      env,
+      nodeExecutionContext,
+    );
   }
 
   return appFetch(request);
@@ -78,6 +99,8 @@ export function startWorkflows() {
 }
 
 /** The five-minute cron's work; scripts/node-server.mjs calls it on a timer. */
-export function runScheduledJobs() {
-  return runFiveMinuteJobs(env);
+export async function runScheduledJobs() {
+  // Workers fires Durable Object alarms itself; on Node the cron does.
+  await auditScratchpads.runDueAlarms();
+  await runFiveMinuteJobs(env);
 }

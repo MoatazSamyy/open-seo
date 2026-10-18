@@ -12,17 +12,20 @@ not for a production install yet.
 | Works                                                     | Not yet                            |
 | --------------------------------------------------------- | ---------------------------------- |
 | Sign-in (`password`, `local_noauth`, `cloudflare_access`) | `AUTH_MODE=hosted`                 |
-| Projects, keyword research, domains, backlinks, SERPs     | Site audits                        |
-| Rank checks and AI-visibility runs, manual and scheduled  | SAM, the in-app chat agent         |
-| Saved keywords, reports, settings, Search Console, GA4    | The operator GDPR erasure endpoint |
+| Projects, keyword research, domains, backlinks, SERPs     | SAM, the in-app chat agent         |
+| Rank checks and AI-visibility runs, manual and scheduled  | The operator GDPR erasure endpoint |
+| Site audits                                               |                                    |
+| Saved keywords, reports, settings, Search Console, GA4    |                                    |
 | The MCP endpoint at `/mcp`                                |                                    |
 
-Starting a site audit or opening SAM shows an error that names the missing
-piece.
+Opening SAM shows an error that names the missing piece.
 
-Background jobs (rank checks, AI-visibility runs) run inside the Node process
-and keep their progress in Postgres. If the process restarts mid-run, the job
-resumes from its last finished step about 15 minutes later.
+Site audits can render JavaScript only through a Context.dev key
+(`CONTEXT_API_KEY`), the same as in Docker: there is no built-in browser.
+
+Background jobs (rank checks, AI-visibility runs, site audits) run inside the
+Node process and keep their progress in Postgres. If the process restarts
+mid-run, the job resumes from its last finished step about 15 minutes later.
 
 ## Run it
 
@@ -60,3 +63,7 @@ It applies database migrations, then listens on `PORT` (default `3001`).
   which defaults to `data/blobs` in the working directory. Keep it on a
   persistent volume.
 - **Short-lived values** (caches, counters): stored in the `platform_kv` table.
+- **Site-audit crawl state:** one SQLite file per running audit under
+  `DURABLE_OBJECT_DIR` (default `data/durable-objects`). Files are deleted when
+  an audit ends, or 7 days later if it never finishes. Run a single Node
+  process per `DURABLE_OBJECT_DIR`.

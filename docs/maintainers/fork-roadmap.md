@@ -94,8 +94,11 @@ server that runs on any host with only Postgres next to it.
   unchanged workflow classes run on a Postgres-backed runner in the Node
   process, with saved steps, replay, sleeps, retries, and leases. Rank checks
   and AI visibility run on Node; site audits wait for 3e.
-- **3e — Site audit in-process.** Run the audit engine in the main process
-  on Node; JavaScript rendering through Context.dev only.
+- **3e — Site audit in-process.** Done, experimental. See
+  [`specs/0022-node-site-audits.md`](./specs/0022-node-site-audits.md). The
+  crawl scratchpad Durable Object runs in-process on a per-audit SQLite file
+  (`node:sqlite`), and the audit engine service is a local object. JavaScript
+  rendering uses Context.dev only.
 - **3f — SAM chat without Durable Objects.** Replace the Agents SDK's
   Durable Object with Postgres-stored chat history and a WebSocket or SSE
   endpoint. Until then, SAM is off on the Node runtime.

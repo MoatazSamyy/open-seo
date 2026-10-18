@@ -7,9 +7,12 @@ import { createWorkflowBinding } from "./workflows";
 // runtime for Workflow, Durable Object, service, and Browser bindings.
 //
 // String settings read from process.env. Workflow bindings run on the
-// Postgres-backed runner (./workflows.ts). A binding Node doesn't have yet
-// resolves to an object that throws a clear error when used, so the app boots
-// and only the feature that needs it fails.
+// Postgres-backed runner (./workflows.ts). Bindings the Node entry provides
+// (Durable Object namespaces, the audit engine) are registered with
+// registerBinding. BROWSER is simply absent, as in Docker, so pages render
+// through Context.dev only. Any other missing binding resolves to an object
+// that throws a clear error when used, so the app boots and only the feature
+// that needs it fails.
 
 const WORKFLOW_BINDINGS = new Set([
   "SITE_AUDIT_WORKFLOW",
@@ -30,10 +33,14 @@ function workflowBinding(name: string) {
   return binding;
 }
 
+const registeredBindings = new Map<string, unknown>();
+
+/** Provides a binding (a namespace or service) the Node entry builds. */
+export function registerBinding(name: string, value: unknown) {
+  registeredBindings.set(name, value);
+}
+
 const PENDING_BINDINGS: Record<string, string> = {
-  AUDIT_ENGINE: "3e (in-process site audit)",
-  AUDIT_SCRATCHPAD: "3e (in-process site audit)",
-  BROWSER: "3e (in-process site audit)",
   SAM_CHAT: "3f (SAM chat without Durable Objects)",
   OAUTH_KV: "hosted mode, which doesn't run on Node",
 };
@@ -61,6 +68,7 @@ export const env: Record<string, unknown> = new Proxy(
       const value = process.env[prop];
       if (value !== undefined) return value;
       if (WORKFLOW_BINDINGS.has(prop)) return workflowBinding(prop);
+      if (registeredBindings.has(prop)) return registeredBindings.get(prop);
       const milestone = PENDING_BINDINGS[prop];
       return milestone ? unavailableBinding(prop, milestone) : undefined;
     },
@@ -69,9 +77,18 @@ export const env: Record<string, unknown> = new Proxy(
 
 export { waitUntil };
 
-// Base classes some bound modules extend; never instantiated on Node.
-/* oxlint-disable typescript/no-extraneous-class -- empty stand-ins for the Workers base classes */
-export class DurableObject {}
-export class WorkerEntrypoint {}
-export class WorkflowEntrypoint {}
-/* oxlint-enable typescript/no-extraneous-class */
+// Base classes the app's workflows, objects, and entrypoints extend. They
+// keep `ctx` and `env` like the Workers ones do.
+class WorkersBase {
+  protected readonly ctx: unknown;
+  protected readonly env: unknown;
+
+  constructor(ctx: unknown, workerEnv: unknown) {
+    this.ctx = ctx;
+    this.env = workerEnv;
+  }
+}
+
+export class DurableObject extends WorkersBase {}
+export class WorkerEntrypoint extends WorkersBase {}
+export class WorkflowEntrypoint extends WorkersBase {}
