@@ -199,13 +199,31 @@ describe("researchWebsite", () => {
     },
   );
 
-  it("fails instead of skipping competitors when search fails for a non-outage reason", async () => {
+  it("fails instead of skipping competitors when search fails for an unexpected reason", async () => {
     listCompetitors.mockResolvedValue([]);
-    search.mockRejectedValue(new AppError("DATAFORSEO_AUTH_FAILED"));
+    search.mockRejectedValue(new AppError("INTERNAL_ERROR"));
 
     await expect(
       researchWebsite("https://saved.com", project, customer),
     ).rejects.toThrow("Website research was incomplete");
+    expect(search).toHaveBeenCalledOnce();
+  });
+
+  it("skips competitors without retrying when the search account is rejected", async () => {
+    listCompetitors.mockResolvedValue([]);
+    search.mockRejectedValue(
+      new AppError("INTERNAL_ERROR", "DataForSEO HTTP 403", {
+        providerStatus: "403",
+      }),
+    );
+
+    const result = await researchWebsite(
+      "https://saved.com",
+      project,
+      customer,
+    );
+
+    expect(result.competitors).toEqual([]);
     expect(search).toHaveBeenCalledOnce();
   });
 });

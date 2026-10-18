@@ -22,6 +22,7 @@ import { requireConfiguration } from "./aiVisibilityMutation";
 import { aiPromptIsBranded } from "./aiVisibilityMatching";
 import { aiRunView } from "./aiVisibilityResults";
 import { aiCostForAnswers } from "./aiVisibilityCost";
+import { usesOpenRouterAnswers } from "../providers/openrouterAnswers";
 
 const ACTIVE_WORKFLOW_STATUSES = new Set([
   "queued",
@@ -73,10 +74,13 @@ export async function startRun(
   billing: BillingCustomerContext,
   promptIds?: string[],
 ): Promise<AiRun> {
-  if (!(await getOptionalEnvValue("DATAFORSEO_API_KEY")))
+  const providerKey = (await usesOpenRouterAnswers())
+    ? "OPENROUTER_API_KEY"
+    : "DATAFORSEO_API_KEY";
+  if (!(await getOptionalEnvValue(providerKey)))
     throw new AiVisibilityError(
       "PROVIDER_NOT_CONFIGURED",
-      "An operator must configure DATAFORSEO_API_KEY before collection. Your saved tracker remains available.",
+      `An operator must configure ${providerKey} before collection. Your saved tracker remains available.`,
     );
   const project = await repo.getProject(config.tracker.projectId);
   if (

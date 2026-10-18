@@ -6,11 +6,11 @@ import {
   type ResearchSpend,
 } from "@/server/billing/researchSpend";
 import { requireOpenRouterCostUsd } from "@/server/lib/chatAgent";
-import { fetchLiveSerp } from "@/server/lib/dataforseo/serp";
 import { DataforseoChargedTaskError } from "@/server/lib/dataforseo/envelope";
 import { normalizeBacklinksTarget } from "@/server/lib/dataforseoBacklinksTarget";
 import { AppError } from "@/server/lib/errors";
 import { buildChatAgentModel } from "@/server/lib/openrouter";
+import { fetchRoutedLiveSerp } from "@/server/lib/serp-provider";
 import {
   getOptionalEnvValue,
   getRequiredEnvValue,
@@ -31,6 +31,15 @@ const SEARCH_RETRIES = 3;
 // request or account.
 function isSearchOutage(error: unknown): error is AppError {
   return error instanceof AppError && error.code === "UPSTREAM_UNAVAILABLE";
+}
+
+// The search provider refused this deployment's account (bad key, account not
+// verified, no balance). Retrying can't help; like an outage, research
+// continues without competitors for the user to add.
+function isSearchAccountRejected(error: unknown): boolean {
+  if (!(error instanceof AppError)) return false;
+  if (error.code === "DATAFORSEO_AUTH_FAILED") return true;
+  return ["401", "402", "403"].includes(error.details?.providerStatus ?? "");
 }
 
 /** Internal research for callers that have already checked admission credits. */
@@ -182,7 +191,7 @@ export async function researchWebsite(
                     let response;
                     for (let attempt = 0; ; attempt++) {
                       try {
-                        response = await fetchLiveSerp({
+                        response = await fetchRoutedLiveSerp({
                           keyword,
                           ...market,
                           depth: 10,
@@ -233,7 +242,8 @@ export async function researchWebsite(
                 searchOutage = results.every(
                   (searchResult) =>
                     searchResult.status === "rejected" &&
-                    isSearchOutage(searchResult.reason),
+                    (isSearchOutage(searchResult.reason) ||
+                      isSearchAccountRejected(searchResult.reason)),
                 );
                 if (searchOutage)
                   return {

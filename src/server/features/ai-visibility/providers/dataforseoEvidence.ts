@@ -111,6 +111,20 @@ export function parseLlmResponseAnswer(
   };
 }
 
+/** A model answer as markdown plus the URLs its web search cited. */
+export function parseModelAnswer(
+  markdown: string,
+  sources: { url: string; title?: string | null }[],
+): ParsedAiAnswer {
+  const answerText = markdownToText(markdown);
+  return {
+    answerMarkdown: answerText.trim() ? markdown : null,
+    answerText: answerText.trim() ? answerText : "",
+    citations: citationsFrom(sources),
+    collectedAt: null,
+  };
+}
+
 function dateOrNull(value: string | null | undefined): string | null {
   if (!value) return null;
   const date = new Date(value);

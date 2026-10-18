@@ -20,11 +20,14 @@ import { AiVisibilityRepository as repo } from "../repositories/AiVisibilityRepo
 import {
   parseDataforseoAnswer,
   parseLlmResponseAnswer,
-  type ParsedAiAnswer,
 } from "../providers/dataforseoEvidence";
-import { aiBrands } from "./aiVisibilityConfiguration";
+import {
+  askOpenRouter,
+  openRouterAnswersEngine,
+  usesOpenRouterAnswers,
+} from "../providers/openrouterAnswers";
+import { runBrands, saveAiAnswer } from "./aiAnswerStorage";
 import { AI_ANSWER_FAILURES } from "./aiVisibilityErrors";
-import { matchAiBrand } from "./aiVisibilityMatching";
 import { failAiRun } from "./aiVisibilityRuns";
 
 // Each function here is one workflow step body: inputs are its parameters and
@@ -105,11 +108,15 @@ export async function prepareAiRun(
     prompt: row.prompt,
     engine: row.engine,
   }));
+  // With OpenRouter answers every engine is a model call (spec 0025).
+  const viaModel = (await usesOpenRouterAnswers())
+    ? () => true
+    : (task: AiLiveTask) => aiEngineUsesModelApi(task.engine);
   const modelBatches = engineBatches(
-    tasks.filter((task) => aiEngineUsesModelApi(task.engine)),
+    tasks.filter(viaModel),
     LIVE_ANSWERS_PER_STEP,
   );
-  const answers = tasks.filter((task) => !aiEngineUsesModelApi(task.engine));
+  const answers = tasks.filter((task) => !viaModel(task));
   if (live) {
     const batches: AiLiveTask[][] = [];
     for (let i = 0; i < answers.length; i += LIVE_ANSWERS_PER_STEP)
@@ -258,6 +265,8 @@ export async function collectAiModelBatch(
   market: AiRunMarket,
   batch: AiTaskBatch,
 ): Promise<void> {
+  if (await usesOpenRouterAnswers())
+    return collectOpenRouterBatch(runId, market, batch);
   const modelSlug = batch.engine;
   if (!aiEngineUsesModelApi(modelSlug))
     throw new AppError("INTERNAL_ERROR", `${modelSlug} has no model API batch`);
@@ -299,6 +308,49 @@ export async function collectAiModelBatch(
           await repo.failPendingObservations(runId, code, [task.tag]);
           return;
         }
+      }
+    }),
+  );
+}
+
+/**
+ * collectAiModelBatch for OpenRouter answers. Each answer is saved as it
+ * arrives; the AI SDK already retries a transient provider error, so a failed
+ * answer fails here. An engine with no OpenRouter model fails with copy that
+ * says so.
+ */
+async function collectOpenRouterBatch(
+  runId: string,
+  market: AiRunMarket,
+  batch: AiTaskBatch,
+): Promise<void> {
+  const brands = await runBrands(runId);
+  if (!brands) return;
+  const tags = batch.tasks.map((task) => task.tag);
+  if (!openRouterAnswersEngine(batch.engine)) {
+    await repo.failPendingObservations(
+      runId,
+      AI_ANSWER_FAILURES.engineUnavailable,
+      tags,
+    );
+    return;
+  }
+  await Promise.all(
+    batch.tasks.map(async (task) => {
+      try {
+        const answer = await askOpenRouter(
+          batch.engine,
+          task.prompt,
+          market.locationCode,
+        );
+        await saveAiAnswer(task.tag, answer, brands);
+      } catch (cause) {
+        console.warn(
+          `[ai-visibility] ${runId} answer ${task.tag} failed:`,
+          cause,
+        );
+        const code = asAppError(cause)?.code ?? "INTERNAL_ERROR";
+        await repo.failPendingObservations(runId, code, [task.tag]);
       }
     }),
   );
@@ -356,14 +408,6 @@ export async function collectAiRound(
   return { pending, retry: engineBatches(retry, MAX_TASKS_PER_POST) };
 }
 
-/** Brands come from the project as each answer is matched. */
-async function runBrands(runId: string) {
-  const run = await repo.getRunInternal(runId);
-  const project = run ? await repo.getProject(run.projectId) : null;
-  if (!run || !project) return null;
-  return aiBrands(project, await repo.listCompetitors(project.id));
-}
-
 /** Saves a finished answer with its citations and brand results, or fails it. */
 async function saveAiOutcome(
   runId: string,
@@ -387,34 +431,6 @@ async function saveAiOutcome(
     return;
   }
   await saveAiAnswer(task.tag, answer, brands);
-}
-
-/** Saves one answer with its citations and brand results. */
-async function saveAiAnswer(
-  observationId: string,
-  answer: ParsedAiAnswer,
-  brands: AiBrand[],
-) {
-  await repo.persistAnswer({
-    observationId,
-    values: {
-      status: "completed",
-      collectedAt: answer.collectedAt ?? new Date().toISOString(),
-      answerMarkdown: answer.answerMarkdown,
-      error: null,
-    },
-    sources: answer.citations.map((citation) => ({
-      id: crypto.randomUUID(),
-      observationId,
-      ...citation,
-    })),
-    matches: brands.map((brand) => ({
-      id: crypto.randomUUID(),
-      observationId,
-      ...brand,
-      ...matchAiBrand(answer, brand),
-    })),
-  });
 }
 
 /** Fails answers that never arrived and records how the run finished. */

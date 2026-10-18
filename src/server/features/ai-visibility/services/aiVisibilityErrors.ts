@@ -21,6 +21,7 @@ export const AI_ANSWER_FAILURES = {
   notStarted: "Collection could not start.",
   stoppedBeforeStart: "Collection stopped before it started.",
   stopped: "Collection stopped before it finished.",
+  engineUnavailable: "This engine isn't available with OpenRouter answers.",
 } as const;
 
 const FAILURE_COPY = new Set<string>(Object.values(AI_ANSWER_FAILURES));

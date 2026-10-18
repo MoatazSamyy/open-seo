@@ -81,6 +81,9 @@ declare namespace Cloudflare {
     // "google_autocomplete" serves keyword research ideas from Google
     // autocomplete (free, no metrics) instead of DataForSEO.
     KEYWORD_IDEAS_PROVIDER?: string;
+    // "openrouter" asks AI visibility prompts through OpenRouter instead of
+    // DataForSEO (self-hosted only). Needs OPENROUTER_API_KEY.
+    AI_VISIBILITY_PROVIDER?: string;
     AI_VISIBILITY_WORKFLOW: Workflow<
       (
         | { runId: string }

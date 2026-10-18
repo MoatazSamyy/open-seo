@@ -1,12 +1,13 @@
 # Data providers
 
-OpenSEO gets its SEO data from DataForSEO. You can move three kinds of data
+OpenSEO gets its SEO data from DataForSEO. You can move four kinds of data
 to other providers:
 
 - **Google search results (SERPs)** to [Serper.dev](https://serper.dev).
 - **Keyword metrics** (search volume, CPC, competition, monthly trend) to
   [Keywords Everywhere](https://keywordseverywhere.com).
 - **Keyword research ideas** to Google autocomplete (free, ideas only).
+- **AI visibility answers** (Prompt Tracking) to [OpenRouter](https://openrouter.ai).
 
 You still need `DATAFORSEO_API_KEY`: everything else in the app uses it.
 
@@ -96,6 +97,42 @@ Autocomplete is an unofficial Google endpoint. A search sends a few dozen
 small requests, and results are cached, but Google may slow or block heavy
 use. Other pages that use DataForSEO (domain overview, backlinks, and so on)
 are unaffected by this setting.
+
+## AI visibility: OpenRouter
+
+Prompt Tracking can ask its prompts through OpenRouter instead of DataForSEO:
+
+```sh
+AI_VISIBILITY_PROVIDER=openrouter
+OPENROUTER_API_KEY=your-openrouter-key
+```
+
+Each engine is asked through a small current model of the same family, with
+web search on:
+
+| Engine              | OpenRouter model             |
+| ------------------- | ---------------------------- |
+| ChatGPT             | `openai/gpt-6-luna`          |
+| Claude              | `anthropic/claude-haiku-5.5` |
+| Gemini              | `google/gemini-3.8-flash`    |
+| Perplexity          | `perplexity/sonar`           |
+| Google AI Overviews | Not available                |
+
+Differences you'll notice:
+
+- **Answers come from the models' APIs, not the apps.** They can differ from
+  what someone sees in the ChatGPT or Gemini app, which add their own context.
+- **Google AI Overviews isn't available.** It's part of Google search, not a
+  model. Its answers fail with a note saying so; remove it from your engines.
+- **Costs are OpenRouter's.** Most of each answer's cost is the web search, about
+  1–1.5¢. Cost estimates in the app still show DataForSEO prices.
+- **Prompt Research and Prompt Explorer still use DataForSEO.**
+
+Setting up AI visibility also uses OpenRouter, to read your website and
+suggest topics and prompts. If your search provider rejects your account,
+setup finishes without competitors, and you can add them yourself.
+
+This setting has no effect on the hosted service.
 
 ## Automatic failover
 
