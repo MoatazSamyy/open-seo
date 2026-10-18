@@ -4,7 +4,10 @@
 # in Miniflare instead.
 
 # --- Build: full install, then the Node build (vite.node.config.ts) ---------
-FROM node:22-slim AS build
+# The output is plain JavaScript, so this stage always runs on the build
+# machine's own platform; a multi-arch build then only emulates the small
+# production install below, not the Vite build.
+FROM --platform=$BUILDPLATFORM node:22-slim AS build
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
