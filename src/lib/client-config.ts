@@ -11,6 +11,9 @@ const CLIENT_CONFIG_KEYS = [
   "POSTHOG_PUBLIC_KEY",
   "POSTHOG_HOST",
   "TURNSTILE_SITE_KEY",
+  // "node" on the Node runtime (set by scripts/node-server.mjs); unset on
+  // Workers. Picks the client side of features that differ, like SAM chat.
+  "OPENSEO_RUNTIME",
 ] as const;
 
 type ClientConfig = Partial<
@@ -44,4 +47,9 @@ export function clientConfigScript(): string {
   // Escape "<" so a value can never close the script tag.
   const json = JSON.stringify(getClientConfig()).replace(/</g, "\\u003c");
   return `window.__OPENSEO_CONFIG__=${json};`;
+}
+
+/** Whether the app is served by the Node runtime rather than Workers. */
+export function isNodeRuntime(): boolean {
+  return getClientConfig().OPENSEO_RUNTIME === "node";
 }

@@ -99,12 +99,14 @@ server that runs on any host with only Postgres next to it.
   crawl scratchpad Durable Object runs in-process on a per-audit SQLite file
   (`node:sqlite`), and the audit engine service is a local object. JavaScript
   rendering uses Context.dev only.
-- **3f — SAM chat without Durable Objects.** Replace the Agents SDK's
-  Durable Object with Postgres-stored chat history and a WebSocket or SSE
-  endpoint. Until then, SAM is off on the Node runtime.
+- **3f — SAM chat without Durable Objects.** Done, experimental. See
+  [`specs/0023-node-sam.md`](./specs/0023-node-sam.md). On Node, SAM streams
+  over HTTP with the AI SDK and stores transcripts in `sam_node_messages`,
+  sharing its prompt, memory, tools, and limits with the Workers agent.
 
-3a ships on its own. 3b–3e together make the Node image usable without SAM;
-3f brings SAM back.
+With 3a–3f done, every feature except hosted mode and the operator GDPR
+erasure endpoint runs on Node. Remaining work before Node replaces the Docker
+image: a Node Dockerfile, and a run with live provider keys.
 
 ## Milestone 4 — Product gaps
 

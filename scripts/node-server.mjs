@@ -12,6 +12,9 @@ import { serveStatic } from "srvx/static";
 const CRON_INTERVAL_MS = 5 * 60_000;
 const FIRST_CRON_DELAY_MS = 60_000;
 
+// Tells the client it's on Node (src/lib/client-config.ts).
+process.env.OPENSEO_RUNTIME = "node";
+
 // Node always runs on Postgres.
 process.env.DATABASE_PROVIDER ||= "postgres";
 if (process.env.DATABASE_PROVIDER !== "postgres") {

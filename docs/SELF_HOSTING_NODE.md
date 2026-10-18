@@ -12,13 +12,17 @@ not for a production install yet.
 | Works                                                     | Not yet                            |
 | --------------------------------------------------------- | ---------------------------------- |
 | Sign-in (`password`, `local_noauth`, `cloudflare_access`) | `AUTH_MODE=hosted`                 |
-| Projects, keyword research, domains, backlinks, SERPs     | SAM, the in-app chat agent         |
-| Rank checks and AI-visibility runs, manual and scheduled  | The operator GDPR erasure endpoint |
+| Projects, keyword research, domains, backlinks, SERPs     | The operator GDPR erasure endpoint |
+| Rank checks and AI-visibility runs, manual and scheduled  |                                    |
 | Site audits                                               |                                    |
+| SAM, the in-app chat agent (with `OPENROUTER_API_KEY`)    |                                    |
 | Saved keywords, reports, settings, Search Console, GA4    |                                    |
 | The MCP endpoint at `/mcp`                                |                                    |
 
-Opening SAM shows an error that names the missing piece.
+SAM on Node uses the same prompt, project memory, tools, and skills, with
+two differences: very long chats aren't summarized to save space (older tool
+results are left out of what the model sees instead), and a reply cut off by a
+server restart isn't resumed; send the message again.
 
 Site audits can render JavaScript only through a Context.dev key
 (`CONTEXT_API_KEY`), the same as in Docker: there is no built-in browser.

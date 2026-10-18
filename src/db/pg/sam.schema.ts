@@ -1,5 +1,11 @@
 import { sql } from "drizzle-orm";
-import { index, pgTable, text } from "drizzle-orm/pg-core";
+import {
+  index,
+  integer,
+  pgTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { user } from "./better-auth-schema";
 import { projects } from "./app.schema";
 
@@ -34,6 +40,28 @@ export const samSessions = pgTable(
     index("sam_sessions_project_updated_idx").on(
       table.projectId,
       table.updatedAt,
+    ),
+  ],
+);
+
+// SAM transcripts on runtimes without Durable Objects (the Node runtime, see
+// src/server/features/sam/samNodeChat.ts). On Cloudflare the transcript lives
+// in the SamChatAgent Durable Object instead and this table stays empty.
+export const samNodeMessages = pgTable(
+  "sam_node_messages",
+  {
+    id: text("id").primaryKey(),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => samSessions.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    // The AI SDK UIMessage, stored whole like the Durable Object stores it.
+    message: text("message").notNull(),
+  },
+  (table) => [
+    uniqueIndex("sam_node_messages_session_position_idx").on(
+      table.sessionId,
+      table.position,
     ),
   ],
 );

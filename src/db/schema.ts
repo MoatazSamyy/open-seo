@@ -140,4 +140,5 @@ export const {
   platformKv,
   workflowInstances,
   workflowSteps,
+  samNodeMessages,
 } = schema;

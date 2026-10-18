@@ -15,12 +15,15 @@ import { registerBinding } from "@/platform/node/cloudflare-workers";
 import { createDurableObjectNamespace } from "@/platform/node/durable-objects";
 import { AuditScratchpad } from "@/server/features/audit/AuditScratchpad";
 import AuditEngine from "@/audit-worker";
+import { authorizeSamChat } from "@/server/features/sam/samChatAccess";
+import { handleSamNodeRequest } from "@/server/features/sam/samNodeChat";
 
 // Server entry for the Node runtime (fork milestone 3c; built by
 // vite.node.config.ts, served by scripts/node-server.mjs). The Workers entry
-// is src/server.ts. Workflows run on the Postgres runner (3d); site audits'
-// crawl scratchpad and audit engine run in this process (3e). Not here yet:
-// SAM chat (3f), the operator GDPR erasure endpoint, and hosted mode.
+// is src/server.ts. Workflows run on the Postgres runner (3d), site audits'
+// crawl scratchpad and audit engine run in this process (3e), and SAM chat
+// runs over HTTP (3f). Not here yet: the operator GDPR erasure endpoint and
+// hosted mode.
 
 const nodeExecutionContext = {
   waitUntil,
@@ -59,10 +62,17 @@ async function handleRequest(request: Request): Promise<Response> {
     return handleAiVisibilityDownload(publicRequest);
   }
 
+  // SAM chat over HTTP: /agents/sam-chat/<sessionId>/<action>, the same
+  // paths the Workers agent serves (spec 0023).
+  const samRoute = /^\/agents\/sam-chat\/([^/]+)\/([a-z-]+)$/.exec(pathname);
+  if (samRoute) {
+    const [, sessionId, action] = samRoute;
+    const denied = await authorizeSamChat(publicRequest, sessionId);
+    if (denied) return denied;
+    return handleSamNodeRequest(publicRequest, sessionId, action);
+  }
   if (pathname.startsWith("/agents/")) {
-    return new Response("SAM chat isn't available on the Node runtime yet.", {
-      status: 404,
-    });
+    return new Response("Not found", { status: 404 });
   }
 
   if (

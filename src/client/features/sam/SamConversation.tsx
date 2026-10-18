@@ -1,11 +1,10 @@
-import { useAgent } from "agents/react";
 // Think speaks the same chat protocol as @cloudflare/ai-chat, but its hook
 // variant skips the client->server transcript sync Think doesn't support.
-import { useAgentChat } from "@cloudflare/think/react";
 import { useEffect, useRef, useState } from "react";
 import { findLast } from "remeda";
 import { toast } from "sonner";
 import { ChatComposer } from "@/client/features/sam/ChatComposer";
+import { useSamChatConnection } from "@/client/features/sam/useSamChatConnection";
 import { invalidateSamSessions } from "@/client/features/sam/samQueries";
 import { captureClientEvent } from "@/client/lib/posthog";
 import { ErrorState } from "@/client/components/ErrorState";
@@ -30,12 +29,11 @@ export function SamConversation({
   projectId: string;
   sessionId: string;
 }) {
-  // The conversation lives in the SamChatAgent Durable Object, keyed by the
-  // session id. The WebSocket is authorized in the Worker (src/server.ts) before
-  // it reaches the DO; billing gates come back as normal assistant messages.
-  const agent = useAgent({ agent: "sam-chat", name: sessionId });
-  // SAM streams dense tool-input deltas; unthrottled per-chunk store fanout
-  // re-renders the transcript per delta and trips React #185 (cloudflare/agents#1361).
+  // The conversation lives in the SamChatAgent Durable Object on Workers, or
+  // in Postgres behind plain HTTP on the Node runtime (useSamChatConnection).
+  // Either way the request is authorized before it reaches the chat, and
+  // billing gates come back as normal assistant messages.
+  const connection = useSamChatConnection(sessionId);
   const {
     messages,
     sendMessage,
@@ -45,7 +43,7 @@ export function SamConversation({
     stop,
     isRecovering,
     connectionError,
-  } = useAgentChat({ agent, experimental_throttle: 50 });
+  } = connection;
 
   // isRecovering: the DO is settling a turn a reset interrupted (persisting
   // the partial reply). Nothing can be sent into it until that lands.
@@ -91,9 +89,10 @@ export function SamConversation({
   // waits until one connect has succeeded.
   const [hasConnected, setHasConnected] = useState(false);
   useEffect(() => {
-    if (agent.identified) setHasConnected(true);
-  }, [agent.identified]);
-  const isReconnecting = hasConnected && !agent.identified && !connectionError;
+    if (connection.identified) setHasConnected(true);
+  }, [connection.identified]);
+  const isReconnecting =
+    hasConnected && !connection.identified && !connectionError;
 
   // Rewind the server-side conversation to before `messageId`: the DO aborts
   // any in-flight turn, then deletes the message and everything after it. Sync
@@ -269,7 +268,7 @@ export function SamConversation({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => agent.reconnect()}
+                    onClick={() => connection.reconnect()}
                   >
                     Reconnect
                   </Button>

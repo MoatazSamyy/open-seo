@@ -407,6 +407,13 @@
       "when": 1792285188801,
       "tag": "0057_mighty_mach_iv",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "6",
+      "when": 1792287096228,
+      "tag": "0058_chief_abomination",
+      "breakpoints": true
     }
   ]
 }
