@@ -22,6 +22,10 @@ import {
   localizeResearchRows,
 } from "./local-volume";
 import {
+  researchWithAutocomplete,
+  usesAutocompleteKeywordIdeas,
+} from "./autocomplete";
+import {
   fetchGoogleAdsResearchRows,
   fetchResearchRowsBySource,
 } from "./research-data";
@@ -269,6 +273,8 @@ export async function research(
   }
 
   const seedKeyword = uniqueKeywords[0];
+  if (await usesAutocompleteKeywordIdeas())
+    return researchWithAutocomplete(input, seedKeyword, billingCustomer);
   const provider = getKeywordDataProvider(input.locationCode);
   // Labs source modes, clickstream, and synonym filtering don't exist for
   // Google-Ads-served countries; normalize them so equivalent requests share

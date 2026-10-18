@@ -1,11 +1,12 @@
 # Data providers
 
-OpenSEO gets its SEO data from DataForSEO. You can move two kinds of data to
-other providers:
+OpenSEO gets its SEO data from DataForSEO. You can move three kinds of data
+to other providers:
 
 - **Google search results (SERPs)** to [Serper.dev](https://serper.dev).
 - **Keyword metrics** (search volume, CPC, competition, monthly trend) to
   [Keywords Everywhere](https://keywordseverywhere.com).
+- **Keyword research ideas** to Google autocomplete (free, ideas only).
 
 You still need `DATAFORSEO_API_KEY`: everything else in the app uses it.
 
@@ -71,6 +72,30 @@ Differences you'll notice:
   best as a second source rather than a way to save money.
 - **Country only.** Keywords Everywhere has no language or city targeting.
   OpenSEO checks its country list and keeps everything else on DataForSEO.
+
+## Keyword ideas: Google autocomplete
+
+If you can't use DataForSEO (for example, your account can't be verified),
+the keyword research page can still find keyword ideas from Google's search
+autocomplete. It's free and needs no account or key:
+
+```sh
+KEYWORD_IDEAS_PROVIDER=google_autocomplete
+```
+
+What you get: up to your result limit of phrases people type into Google,
+for the project's country and language, starting with the most popular.
+
+What you don't get: search volume, trend, CPC, competition, keyword
+difficulty, or intent. Those columns stay empty, so sorting by them does
+nothing. Connect [Google Search Console](SELF_HOSTING_GOOGLE_SEARCH_CONSOLE.md)
+to see real clicks and impressions for keywords your site already shows up
+for. City and region targeting isn't supported; you get the country's ideas.
+
+Autocomplete is an unofficial Google endpoint. A search sends a few dozen
+small requests, and results are cached, but Google may slow or block heavy
+use. Other pages that use DataForSEO (domain overview, backlinks, and so on)
+are unaffected by this setting.
 
 ## Automatic failover
 

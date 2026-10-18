@@ -5,9 +5,14 @@ export type KeywordMode = "auto" | KeywordSource;
 /**
  * Where research rows actually came from. "google_ads" is not requestable as
  * a mode (it's the automatic source for countries Labs doesn't support), and
- * "blended" is auto mode's suggestions + ideas mix.
+ * "blended" is auto mode's suggestions + ideas mix. "autocomplete" is the
+ * metric-less KEYWORD_IDEAS_PROVIDER=google_autocomplete path.
  */
-export type ResearchSource = KeywordSource | "google_ads" | "blended";
+export type ResearchSource =
+  | KeywordSource
+  | "google_ads"
+  | "blended"
+  | "autocomplete";
 
 export const MIN_NON_SEED_FOR_AUTO = 5;
 

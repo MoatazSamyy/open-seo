@@ -78,6 +78,9 @@ declare namespace Cloudflare {
     // Keywords Everywhere API key; required when
     // KEYWORD_METRICS_PROVIDER=keywords_everywhere.
     KEYWORDS_EVERYWHERE_API_KEY?: string;
+    // "google_autocomplete" serves keyword research ideas from Google
+    // autocomplete (free, no metrics) instead of DataForSEO.
+    KEYWORD_IDEAS_PROVIDER?: string;
     AI_VISIBILITY_WORKFLOW: Workflow<
       (
         | { runId: string }
