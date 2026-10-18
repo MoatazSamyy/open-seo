@@ -81,6 +81,7 @@
         "src/platform/**",
         "**/*.test.ts",
         "src/audit-worker.ts",
+        "src/server.node.ts",
         "src/server/workflows/**",
         "src/server/features/audit/AuditScratchpad.ts",
         "src/server/features/audit/services/AuditService.ts",

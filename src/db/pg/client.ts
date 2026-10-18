@@ -6,6 +6,7 @@ import {
   getDatabaseProvider,
   getPostgresConnectionString,
 } from "@/db/provider";
+import { postgresClientLifetime } from "@/platform/runtime";
 import { withQueryRetries } from "./retry";
 import * as schema from "./schema";
 
@@ -71,9 +72,22 @@ export async function withPgClient<T>(fn: () => Promise<T>): Promise<T> {
   if (pgClientStore.getStore()) {
     return fn();
   }
+  if (postgresClientLifetime === "process") {
+    processClient ??= createScopeClient(PROCESS_POOL_SIZE);
+    return pgClientStore.run(processClient, fn);
+  }
+  return pgClientStore.run(createScopeClient(1), fn);
+}
+
+// Node keeps one pooled client for the whole process; Workers can't (see
+// above) and create one per scope.
+const PROCESS_POOL_SIZE = 10;
+let processClient: ReturnType<typeof createScopeClient> | null = null;
+
+function createScopeClient(max: number) {
   const sql = withQueryRetries(
     postgres(getPostgresConnectionString(), {
-      max: 1,
+      max,
       fetch_types: false,
       // Bound connect stalls (seconds) so the per-query retry in
       // withQueryRetries gets its turn within the request's lifetime instead
@@ -81,5 +95,5 @@ export async function withPgClient<T>(fn: () => Promise<T>): Promise<T> {
       connect_timeout: 10,
     }),
   );
-  return pgClientStore.run({ sql, db: createPgDb(sql) }, fn);
+  return { sql, db: createPgDb(sql) };
 }

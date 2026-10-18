@@ -1,37 +1,33 @@
-import { env } from "cloudflare:workers";
+import { getConfigByName, getPostgresUrl } from "@/platform/runtime";
 
 type DatabaseProvider = "d1" | "postgres";
 
 export function getDatabaseProvider(): DatabaseProvider {
-  const provider = Reflect.get(env, "DATABASE_PROVIDER");
+  const provider = getConfigByName("DATABASE_PROVIDER");
 
   if (provider === "postgres") {
     return "postgres";
   }
 
-  if (provider === "d1" || provider === undefined || provider === "") {
+  if (provider === "d1" || provider === undefined) {
     return "d1";
   }
 
   throw new Error(
-    `Unsupported DATABASE_PROVIDER "${String(provider)}". Expected "d1" or "postgres".`,
+    `Unsupported DATABASE_PROVIDER "${provider}". Expected "d1" or "postgres".`,
   );
 }
 
-// Postgres is only reachable through the HYPERDRIVE binding — never a direct
-// connection string from a Worker var. In local dev the binding resolves to
-// `localConnectionString` from wrangler.jsonc (miniflare never contacts real
-// Hyperdrive), so the same code path covers both.
+// The runtime decides where the connection string comes from: on Workers only
+// the HYPERDRIVE binding (in local dev, its localConnectionString), on Node the
+// POSTGRES_DATABASE_URL setting.
 export function getPostgresConnectionString() {
-  const hyperdrive = Reflect.get(env, "HYPERDRIVE") as
-    | { connectionString?: string }
-    | undefined;
-  const hyperdriveUrl = hyperdrive?.connectionString?.trim();
-  if (hyperdriveUrl) {
-    return hyperdriveUrl;
+  const url = getPostgresUrl();
+  if (url) {
+    return url;
   }
 
   throw new Error(
-    "DATABASE_PROVIDER=postgres requires a HYPERDRIVE binding (in local dev, its localConnectionString).",
+    "DATABASE_PROVIDER=postgres requires a HYPERDRIVE binding on Workers (in local dev, its localConnectionString) or POSTGRES_DATABASE_URL on Node.",
   );
 }

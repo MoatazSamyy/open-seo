@@ -1,4 +1,7 @@
 import { env, waitUntil as workersWaitUntil } from "cloudflare:workers";
+import type { BlobStore, ConfigKey, KeyValueStore } from "@/platform/types";
+
+export type { BlobStore, StoredBlob } from "@/platform/types";
 
 // The app's seam to its runtime: config, work that outlives the response, a
 // key-value store, and blob storage. This is the Cloudflare Workers
@@ -9,17 +12,8 @@ import { env, waitUntil as workersWaitUntil } from "cloudflare:workers";
 // Every member reads `env` at call time, not import time, so tests that mock
 // cloudflare:workers and fill the mock in beforeEach keep working.
 
-type ConfigKey = Extract<
-  {
-    [K in keyof Cloudflare.Env]: Cloudflare.Env[K] extends string | undefined
-      ? K
-      : never;
-  }[keyof Cloudflare.Env],
-  keyof Cloudflare.Env
->;
-
 /** A string setting (var or secret) from the deployment's config. */
-export function getConfig<K extends ConfigKey>(name: K): Cloudflare.Env[K] {
+export function getConfig(name: ConfigKey): string | undefined {
   return env[name];
 }
 
@@ -33,28 +27,31 @@ export function getConfigByName(name: string): string | undefined {
 }
 
 /**
+ * Postgres connection string. On Workers it only comes from the HYPERDRIVE
+ * binding (in local dev, its localConnectionString), never a plain var.
+ */
+export function getPostgresUrl(): string | undefined {
+  const hyperdrive: unknown = Reflect.get(env, "HYPERDRIVE");
+  const url: unknown =
+    typeof hyperdrive === "object" && hyperdrive !== null
+      ? Reflect.get(hyperdrive, "connectionString")
+      : undefined;
+  return typeof url === "string" && url.trim() ? url.trim() : undefined;
+}
+
+/**
+ * How long one Postgres client may live. Workers forbid reusing a socket
+ * across requests, so each request opens its own (Hyperdrive pools behind it).
+ */
+export const postgresClientLifetime: "request" | "process" = "request";
+
+/**
  * Keep the request alive until `promise` settles, without making the response
  * wait for it. Throws outside a request (Workflow steps, tests), like the
  * Workers API it wraps.
  */
 export function waitUntil(promise: Promise<unknown>): void {
   workersWaitUntil(promise);
-}
-
-interface KeyValueStore {
-  get(key: string): Promise<string | null>;
-  getJson(key: string, options?: { cacheTtl?: number }): Promise<unknown>;
-  put(
-    key: string,
-    value: string,
-    options?: { expirationTtl?: number },
-  ): Promise<void>;
-  delete(key: string): Promise<void>;
-  /** One page of keys; `cursor` is set only when more pages follow. */
-  list(options: {
-    prefix: string;
-    cursor?: string;
-  }): Promise<{ keys: string[]; cursor?: string }>;
 }
 
 export const kv: KeyValueStore = {
@@ -72,33 +69,6 @@ export const kv: KeyValueStore = {
     };
   },
 };
-
-export interface StoredBlob {
-  key: string;
-  customMetadata: Record<string, string>;
-}
-
-export interface BlobWithBody extends StoredBlob {
-  text(): Promise<string>;
-  body: ReadableStream;
-}
-
-export interface BlobStore {
-  get(key: string): Promise<BlobWithBody | null>;
-  put(
-    key: string,
-    value: string,
-    options?: { contentType?: string; customMetadata?: Record<string, string> },
-  ): Promise<void>;
-  /** Up to 1,000 keys per call. */
-  delete(keys: string | string[]): Promise<void>;
-  /** One page, with custom metadata; `cursor` is set only when more follow. */
-  list(options: {
-    prefix: string;
-    cursor?: string;
-    limit?: number;
-  }): Promise<{ objects: StoredBlob[]; cursor?: string }>;
-}
 
 export const blobs: BlobStore = {
   get: async (key) => {

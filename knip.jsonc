@@ -5,6 +5,11 @@
     "deploy/alchemy/alchemy.preview-access.run.ts",
     // Site-audit aux worker entry (wrangler.audit.jsonc)
     "src/audit-worker.ts",
+    // Node runtime build (vite.node.config.ts): its server entry and the
+    // modules it aliases in for "@/platform/runtime" and cloudflare:*.
+    "src/server.node.ts",
+    "src/platform/runtime.node.ts",
+    "src/platform/node/*.ts",
     // Detect Tanstack Start Routes
     "src/start.ts",
     "src/router.tsx",

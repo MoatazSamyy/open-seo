@@ -11,6 +11,7 @@ routeTree.gen.ts
 # stay byte-identical to the canonical source, not reformatted
 plugins/openseo/skills/
 dist/
+dist-node/
 # generated migrations; the drizzle-kit configs beside them are still formatted
 drizzle/sqlite/
 drizzle/pg/

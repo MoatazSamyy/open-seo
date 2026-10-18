@@ -5,6 +5,9 @@ yarn.lock
 .dev.vars
 dist/
 dist-sourcemaps/
+dist-node/
+# Node runtime blob storage (BLOB_DIR default)
+/data/
 .wrangler
 /tmp
 

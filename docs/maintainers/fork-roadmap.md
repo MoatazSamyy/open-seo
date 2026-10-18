@@ -83,8 +83,12 @@ server that runs on any host with only Postgres next to it.
   keeps everything else off `cloudflare:workers`, except the files listed
   there that still need Workflow, Durable Object, service, or Browser
   bindings; 3c-3e move those.
-- **3c — Node runtime.** A Node HTTP entry, a Postgres KV table, filesystem
-  blob storage, timers for cron, and Postgres only.
+- **3c — Node runtime.** Done, experimental. See
+  [`specs/0020-node-runtime.md`](./specs/0020-node-runtime.md) and
+  [`../SELF_HOSTING_NODE.md`](../SELF_HOSTING_NODE.md). `pnpm build:node` and
+  `pnpm start:node` run the app on Node with Postgres, a `platform_kv` table,
+  file blobs, and a cron timer. Workflow-backed features fail with a clear
+  error until 3d.
 - **3d — Durable workflows on Postgres.** A runner that persists `step.do`
   results and `step.sleep` wake-up times in Postgres, with the same API the
   three workflows use, plus create/status/terminate.

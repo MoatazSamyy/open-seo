@@ -1,14 +1,9 @@
-import {
-  createStartHandler,
-  defaultStreamHandler,
-} from "@tanstack/react-start/server";
 import { routeAgentRequest } from "agents";
+import { appFetch } from "@/server/entry/app-fetch";
+import { runFiveMinuteJobs } from "@/server/entry/scheduled-jobs";
 import { resolveUserContextFromHeaders } from "@/middleware/ensure-user/resolve";
 import { ProjectRepository } from "@/server/features/projects/repositories/ProjectRepository";
 import { SamSessionRepository } from "@/server/features/sam/SamSessionRepository";
-import { runScheduledRankChecks } from "@/server/features/rank-tracking/services/scheduledRankChecks";
-import { SCHEDULED_RANK_CHECKS_PAUSED } from "@/shared/rank-tracking-pause";
-import { reconcileStaleAudits } from "@/server/features/audit/services/auditReconciler";
 import { getOrCreateOrganizationCustomer } from "@/server/billing/subscription";
 import { isHostedServerAuthMode } from "@/server/lib/runtime-env";
 import { getAuthMode, isHostedAuthMode } from "@/lib/auth-mode";
@@ -27,39 +22,6 @@ import { sweepDubReferredOrganizations } from "@/server/referrals/dub";
 import { maybeSendSelfHostHeartbeat } from "@/server/lib/self-host-telemetry";
 import { handleGdprStorageErasure } from "@/server/gdpr/storage-erasure";
 import { GDPR_STORAGE_ERASURE_PATH } from "@/shared/gdpr-erasure";
-
-const startHandler = createStartHandler(defaultStreamHandler);
-
-// The app ships no security response headers of its own, so any third-party
-// page can frame an app route and UI-redress a one-click action (delete a
-// project, change project settings, buy credits). `frame-ancestors 'self'` on
-// the app's own documents is the whole fix, and deliberately all of it: a
-// script-src policy would need a nonce for the inline bootstrap script in
-// __root.tsx plus allowances for Turnstile and PostHog, which is separate,
-// larger work.
-//
-// Only HTML documents, and only ones that carry no policy of their own, so a
-// route that sets its own stricter CSP keeps it (two CSP headers intersect, so
-// adding a second could only confuse things). Wrapping the handler rather than
-// one call site covers the OAuth-provider path too, which serves app documents
-// through this same function.
-async function appFetch(request: Request): Promise<Response> {
-  const response = await startHandler(request);
-  const contentType = response.headers.get("content-type") ?? "";
-  if (
-    !contentType.startsWith("text/html") ||
-    response.headers.has("content-security-policy")
-  ) {
-    return response;
-  }
-  const headers = new Headers(response.headers);
-  headers.set("Content-Security-Policy", "frame-ancestors 'self'");
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
-}
 
 const openSeoOAuthProvider = createOpenSeoOAuthProvider(appFetch);
 
@@ -227,31 +189,6 @@ export default {
       return;
     }
 
-    // Watchdog first: reconcile audits stuck in "running" whose workflow died
-    // without reaching mark-failed (OOM/CPU kills, expired instances). Runs
-    // before the rank loop so a slow tick can't delay or starve it. Its
-    // failure is held until after the rank checks so it can't suppress them,
-    // then rethrown so the invocation still reports as failed.
-    let watchdogError: unknown;
-    try {
-      await withPgClient(() => reconcileStaleAudits());
-    } catch (err) {
-      watchdogError = err;
-      console.error("[cron] Stale-audit reconcile failed:", err);
-    }
-    // Scope a per-request Postgres client for the cron run (no-op in D1 mode).
-    const checks = await Promise.allSettled([
-      SCHEDULED_RANK_CHECKS_PAUSED && isHostedAuthMode(env.AUTH_MODE)
-        ? Promise.resolve()
-        : withPgClient(() => runScheduledRankChecks(env)),
-      withPgClient(async () => {
-        const { runScheduledAiVisibility } =
-          await import("@/server/features/ai-visibility/services/scheduledAiVisibility");
-        await runScheduledAiVisibility();
-      }),
-    ]);
-    for (const result of checks)
-      if (result.status === "rejected") throw result.reason;
-    if (watchdogError) throw watchdogError;
+    await runFiveMinuteJobs(env);
   },
 };
