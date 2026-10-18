@@ -51,6 +51,9 @@ const server = serve({
 await server.ready();
 console.log(`[node] OpenSEO listening on ${server.url}`);
 
+app.startWorkflows();
+console.log("[node] workflow runner started");
+
 // One run at a time: a slow tick is skipped rather than overlapped.
 let cronRunning = false;
 async function runCron() {

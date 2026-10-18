@@ -89,9 +89,11 @@ server that runs on any host with only Postgres next to it.
   `pnpm start:node` run the app on Node with Postgres, a `platform_kv` table,
   file blobs, and a cron timer. Workflow-backed features fail with a clear
   error until 3d.
-- **3d — Durable workflows on Postgres.** A runner that persists `step.do`
-  results and `step.sleep` wake-up times in Postgres, with the same API the
-  three workflows use, plus create/status/terminate.
+- **3d — Durable workflows on Postgres.** Done, experimental. See
+  [`specs/0021-node-workflows.md`](./specs/0021-node-workflows.md). The
+  unchanged workflow classes run on a Postgres-backed runner in the Node
+  process, with saved steps, replay, sleeps, retries, and leases. Rank checks
+  and AI visibility run on Node; site audits wait for 3e.
 - **3e — Site audit in-process.** Run the audit engine in the main process
   on Node; JavaScript rendering through Context.dev only.
 - **3f — SAM chat without Durable Objects.** Replace the Agents SDK's

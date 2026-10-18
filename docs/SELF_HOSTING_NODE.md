@@ -9,16 +9,20 @@ not for a production install yet.
 
 ## What works and what doesn't
 
-| Works                                                     | Not yet                                                 |
-| --------------------------------------------------------- | ------------------------------------------------------- |
-| Sign-in (`password`, `local_noauth`, `cloudflare_access`) | `AUTH_MODE=hosted`                                      |
-| Projects, keyword research, domains, backlinks, SERPs     | Rank checks and AI-visibility runs (they use Workflows) |
-| Saved keywords, reports, settings, Search Console, GA4    | Site audits                                             |
-| The MCP endpoint at `/mcp`                                | SAM, the in-app chat agent                              |
-| The five-minute scheduler                                 | The operator GDPR erasure endpoint                      |
+| Works                                                     | Not yet                            |
+| --------------------------------------------------------- | ---------------------------------- |
+| Sign-in (`password`, `local_noauth`, `cloudflare_access`) | `AUTH_MODE=hosted`                 |
+| Projects, keyword research, domains, backlinks, SERPs     | Site audits                        |
+| Rank checks and AI-visibility runs, manual and scheduled  | SAM, the in-app chat agent         |
+| Saved keywords, reports, settings, Search Console, GA4    | The operator GDPR erasure endpoint |
+| The MCP endpoint at `/mcp`                                |                                    |
 
-Starting a rank check, an AI-visibility run, or a site audit shows an error
-that names the missing piece.
+Starting a site audit or opening SAM shows an error that names the missing
+piece.
+
+Background jobs (rank checks, AI-visibility runs) run inside the Node process
+and keep their progress in Postgres. If the process restarts mid-run, the job
+resumes from its last finished step about 15 minutes later.
 
 ## Run it
 

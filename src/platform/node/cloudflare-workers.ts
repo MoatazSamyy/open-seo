@@ -1,18 +1,36 @@
 import { waitUntil } from "@/platform/runtime";
+import { createWorkflowBinding } from "./workflows";
 
 // Stand-in for the `cloudflare:workers` module in the Node build (aliased in
 // vite.node.config.ts). Code that moved to "@/platform/runtime" never gets
 // here; this covers the files .oxlintrc.json still lets import the Workers
 // runtime for Workflow, Durable Object, service, and Browser bindings.
 //
-// String settings read from process.env. A binding Node doesn't have yet
+// String settings read from process.env. Workflow bindings run on the
+// Postgres-backed runner (./workflows.ts). A binding Node doesn't have yet
 // resolves to an object that throws a clear error when used, so the app boots
 // and only the feature that needs it fails.
 
+const WORKFLOW_BINDINGS = new Set([
+  "SITE_AUDIT_WORKFLOW",
+  "RANK_CHECK_WORKFLOW",
+  "AI_VISIBILITY_WORKFLOW",
+]);
+const workflowBindings = new Map<
+  string,
+  ReturnType<typeof createWorkflowBinding>
+>();
+
+function workflowBinding(name: string) {
+  let binding = workflowBindings.get(name);
+  if (!binding) {
+    binding = createWorkflowBinding(name);
+    workflowBindings.set(name, binding);
+  }
+  return binding;
+}
+
 const PENDING_BINDINGS: Record<string, string> = {
-  SITE_AUDIT_WORKFLOW: "3d-3e (durable workflows, in-process site audit)",
-  RANK_CHECK_WORKFLOW: "3d (durable workflows)",
-  AI_VISIBILITY_WORKFLOW: "3d (durable workflows)",
   AUDIT_ENGINE: "3e (in-process site audit)",
   AUDIT_SCRATCHPAD: "3e (in-process site audit)",
   BROWSER: "3e (in-process site audit)",
@@ -42,6 +60,7 @@ export const env: Record<string, unknown> = new Proxy(
       if (typeof prop !== "string") return undefined;
       const value = process.env[prop];
       if (value !== undefined) return value;
+      if (WORKFLOW_BINDINGS.has(prop)) return workflowBinding(prop);
       const milestone = PENDING_BINDINGS[prop];
       return milestone ? unavailableBinding(prop, milestone) : undefined;
     },

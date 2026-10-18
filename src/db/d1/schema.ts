@@ -14,3 +14,4 @@ export * from "../gsc.schema";
 export * from "../telemetry.schema";
 export * from "../ai-visibility.schema";
 export * from "../platform.schema";
+export * from "../workflow.schema";
