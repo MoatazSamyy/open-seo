@@ -21,6 +21,7 @@ const state = await vi.hoisted(async () => {
     cache: new Map<string, unknown>(),
     startAudit: vi.fn(),
     latestAudit: vi.fn(),
+    renderingAllowed: vi.fn(),
   };
 });
 vi.mock("@/server/features/audit/services/AuditService", () => ({
@@ -31,6 +32,9 @@ vi.mock("@/server/features/audit/services/AuditService", () => ({
 }));
 vi.mock("@/server/features/audit/repositories/AuditRepository", () => ({
   AuditRepository: { getLatestAuditForProject: state.latestAudit },
+}));
+vi.mock("@/server/lib/audit/rendering-policy", () => ({
+  isAuditRenderingAllowed: state.renderingAllowed,
 }));
 vi.mock("@/db", () => ({ db: state.db }));
 vi.mock("cloudflare:workers", () => ({ env: { DATABASE_PROVIDER: "d1" } }));
@@ -46,6 +50,7 @@ beforeEach(async () => {
   state.cache.clear();
   state.latestAudit.mockResolvedValue(null);
   state.startAudit.mockResolvedValue({ auditId: "audit" });
+  state.renderingAllowed.mockResolvedValue(true);
   await state.client.executeMultiple("DELETE FROM data_refresh_claims;");
 });
 afterEach(() => vi.useRealTimers());
@@ -178,6 +183,15 @@ it("starts only one rendered 50-page audit for simultaneous website saves", asyn
       renderJavaScript: true,
       billingCustomer: customer,
     }),
+  );
+});
+it("starts an unrendered first scan when no renderer is configured", async () => {
+  state.renderingAllowed.mockResolvedValue(false);
+  expect(
+    await DashboardFirstAuditService.start("project", "example.com", customer),
+  ).toMatchObject({ status: "started" });
+  expect(state.startAudit).toHaveBeenCalledWith(
+    expect.objectContaining({ renderJavaScript: false }),
   );
 });
 it("returns a visible startup refusal and backs off instead of repeatedly attempting a billed scan", async () => {

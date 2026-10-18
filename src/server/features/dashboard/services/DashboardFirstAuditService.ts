@@ -4,6 +4,7 @@ import { AuditRepository } from "@/server/features/audit/repositories/AuditRepos
 import { DataRefreshClaimRepository } from "../repositories/DataRefreshClaimRepository";
 import { buildCacheKey } from "@/server/lib/r2-cache";
 import { asAppError } from "@/server/lib/errors";
+import { isAuditRenderingAllowed } from "@/server/lib/audit/rendering-policy";
 import type { BillingCustomerContext } from "@/server/billing/subscription";
 
 async function start(
@@ -42,7 +43,8 @@ async function start(
       projectId,
       startUrl: `https://${domain}`,
       maxPages: 50,
-      renderJavaScript: true,
+      // Self-hosters without a renderer still get a plain-HTML first scan.
+      renderJavaScript: await isAuditRenderingAllowed(),
       lighthouseStrategy: "none",
       limitTier,
     });

@@ -108,8 +108,8 @@ function GeneralSection({ project }: { project: ProjectSummary }) {
           </form.AppField>
 
           <p className="text-sm text-muted-foreground">
-            Adding your website starts a 50-page scan with JavaScript rendering.
-            Rendering uses your credits.
+            Adding your website starts a 50-page scan, with JavaScript rendering
+            when a renderer is configured. Rendering uses your credits.
           </p>
           <form.AppField name="domain">
             {(field) => (
