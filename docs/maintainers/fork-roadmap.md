@@ -105,8 +105,10 @@ server that runs on any host with only Postgres next to it.
   sharing its prompt, memory, tools, and limits with the Workers agent.
 
 With 3a–3f done, every feature except hosted mode and the operator GDPR
-erasure endpoint runs on Node. Remaining work before Node replaces the Docker
-image: a Node Dockerfile, and a run with live provider keys.
+erasure endpoint runs on Node. `deploy/docker/Dockerfile.node` and
+`compose.node.yaml` package it with Postgres. Remaining before Node replaces
+the default Docker image: a CI job that builds and publishes the Node image,
+and a run with live provider keys.
 
 ## Milestone 4 — Product gaps
 

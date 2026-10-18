@@ -31,7 +31,32 @@ Background jobs (rank checks, AI-visibility runs, site audits) run inside the
 Node process and keep their progress in Postgres. If the process restarts
 mid-run, the job resumes from its last finished step about 15 minutes later.
 
-## Run it
+## Run it with Docker
+
+`compose.node.yaml` builds the Node image and runs it beside its own Postgres.
+
+```sh
+cp .env.example .env
+```
+
+Set `DATAFORSEO_API_KEY` in `.env` (see
+[`DATAFORSEO_API_KEY.md`](./DATAFORSEO_API_KEY.md)). Optionally set
+`POSTGRES_PASSWORD`, `PORT`, `OPENROUTER_API_KEY` for SAM, and the sign-in
+settings below. Then build and start it:
+
+```sh
+docker compose -f compose.node.yaml up -d --build
+```
+
+Open `http://localhost:3001`. The app applies database migrations at every
+start. Its files live in the `open_seo_data` volume and the database in
+`open_seo_postgres`; back up both.
+
+It starts with `AUTH_MODE=local_noauth` (no sign-in). To put it on the
+internet, set `AUTH_MODE=password` and the settings in
+[`SELF_HOSTING_LOGIN.md`](./SELF_HOSTING_LOGIN.md), and serve it over HTTPS.
+
+## Run it without Docker
 
 You need Node 22 or newer and a Postgres database.
 

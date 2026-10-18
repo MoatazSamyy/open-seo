@@ -1,0 +1,48 @@
+# OpenSEO on the Node runtime (experimental), with its own Postgres.
+#   docker compose -f compose.node.yaml up -d --build
+# See docs/SELF_HOSTING_NODE.md. The default compose.yaml runs the Workers
+# build in Miniflare instead.
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=openseo
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-openseo}
+      - POSTGRES_DB=openseo
+    volumes:
+      - open_seo_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openseo -d openseo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  open-seo:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.node
+    image: ${OPEN_SEO_NODE_IMAGE:-open-seo-node:local}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Forward every .env value (provider keys, sign-in settings, ...); the
+    # explicit list below wins for the values it names.
+    env_file:
+      - .env
+    environment:
+      - PORT=${PORT:-3001}
+      - DATABASE_PROVIDER=postgres
+      - POSTGRES_DATABASE_URL=postgres://openseo:${POSTGRES_PASSWORD:-openseo}@postgres:5432/openseo
+      # local_noauth (default): no sign-in, single admin. Set AUTH_MODE=password
+      # in .env for email/password sign-in; see docs/SELF_HOSTING_LOGIN.md
+      - AUTH_MODE=${AUTH_MODE:-local_noauth}
+    ports:
+      - "127.0.0.1:${PORT:-3001}:${PORT:-3001}"
+    volumes:
+      - open_seo_data:/data
+
+volumes:
+  open_seo_postgres:
+  open_seo_data:
